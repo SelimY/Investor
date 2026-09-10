@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yahoo Finance Bağlantı Testi</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAF7F0; --surface:#FFFFFF; --surface-2:#F3EEE2; --text:#1B1A17; --muted:#726B5C;
+  --border:#E7DFCE; --accent:#FF4B3E; --teal:#00A896; --gold:#E8A400;
+  --font-mono:'IBM Plex Mono', ui-monospace, monospace; --font-body:'Inter', sans-serif;
+}
+*{box-sizing:border-box;}
+body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--font-body); font-size:14px; padding:24px; }
+h1{ font-size:19px; margin:0 0 4px; }
+.subtitle{ color:var(--muted); font-size:13px; margin:0 0 20px; line-height:1.6; }
+.panel{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:18px; }
+.panel-label{ font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+
+.controls{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.controls label{ font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+select, input[type=text], input[type=number]{
+  font-family:var(--font-mono); font-size:12.5px; padding:6px 8px; border-radius:6px;
+  border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+}
+button{
+  font-family:var(--font-mono); font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer;
+}
+button.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+button.stop{ background:var(--gold); color:#2a2205; border-color:var(--gold); }
+button:hover{ filter:brightness(1.05); }
+button:disabled{ opacity:.5; cursor:not-allowed; }
+
+table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+th{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); text-align:right; padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+th:first-child, td:first-child{ text-align:left; }
+td{ padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; font-family:var(--font-mono); }
+tr:last-child td{ border-bottom:none; }
+.pos{ color:var(--teal); font-weight:600; }
+.neg{ color:var(--accent); font-weight:600; }
+.badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-family:var(--font-mono); }
+.badge.open{ background:rgba(0,168,150,.15); color:var(--teal); }
+.badge.closed{ background:rgba(114,107,92,.15); color:var(--muted); }
+.badge.pre, .badge.post{ background:rgba(232,164,0,.18); color:var(--gold); }
+.src-direct{ color:var(--teal); }
+.src-proxy{ color:var(--gold); }
+.src-error{ color:var(--accent); }
+.elapsed-ok{ color:var(--teal); font-weight:600; }
+.elapsed-stale{ color:var(--accent); font-weight:600; }
+.invalid-row td{ color:var(--muted); opacity:.7; }
+.invalid-row .x-mark{ color:var(--accent); font-weight:700; }
+
+/* Sembol listesi */
+.symbol-list{ display:flex; flex-direction:column; gap:4px; max-height:320px; overflow-y:auto; padding-right:4px; }
+.symbol-group-header{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted); margin:8px 0 2px; padding-top:6px; border-top:1px dashed var(--border);
+}
+.symbol-group-header:first-child{ margin-top:0; border-top:none; padding-top:0; }
+.symbol-row{ display:flex; gap:6px; align-items:center; }
+.symbol-row input[type=text]{ flex:1; }
+.symbol-row button{ padding:4px 9px; font-size:12px; }
+.symbol-add-row{ display:flex; gap:6px; margin-top:10px; }
+.symbol-add-row input{ flex:1; }
+.invalid-tag{ font-size:10px; color:var(--accent); font-family:var(--font-mono); margin-left:4px; }
+
+.console{
+  background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7; padding:12px 14px;
+  height:280px; overflow-y:auto;
+}
+.console .line{ display:flex; gap:10px; white-space:pre-wrap; word-break:break-word; }
+.console .ts{ color:var(--muted); flex-shrink:0; }
+.console .tag{ flex-shrink:0; font-weight:600; }
+.console .tag.info{ color:var(--muted); }
+.console .tag.ok{ color:var(--teal); }
+.console .tag.err{ color:var(--accent); }
+.console .tag.warn{ color:var(--gold); }
+.muted-note{ color:var(--muted); font-size:12px; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<h1>Yahoo Finance Bağlantı Testi</h1>
+<p class="subtitle">
+  Veritabanı yok, statik test sayfası. Önce doğrudan istek, başarısız olursa sırayla birden fazla CORS proxy dener
+  (tek bir proxy'ye artık güvenilmiyor — konsolunda gördüğümüz gibi allorigins.win de zaman zaman 500/522 dönüyor).
+  Yahoo'nun kendisi "bu sembol yok" derse o sembol için sorgu tamamen durur ve tabloda "x" gösterilir; ağ/proxy
+  hataları ise geçicidir, bir sonraki döngüde tekrar denenir.
+</p>
+
+<div class="panel">
+  <div class="panel-label">Kontroller</div>
+  <div class="controls">
+    <label>Mod:
+      <select id="modeSelect">
+        <option value="auto">Otomatik (Doğrudan dene → CORS'a takılırsa Proxy zinciri)</option>
+        <option value="direct">Sadece Doğrudan (proxy'ye hiç düşme)</option>
+        <option value="proxy">Sadece Proxy Zinciri (doğrudan hiç deneme)</option>
+      </select>
+    </label>
+    <button type="button" id="refreshBtn" class="primary">Yenile</button>
+    <label><input type="checkbox" id="autoRefreshToggle"> Otomatik yenile, her</label>
+    <input type="number" id="autoRefreshSeconds" value="30" min="5" style="width:56px;"> sn
+    <button type="button" id="stopAutoBtn" class="stop">Dur</button>
+    <button type="button" id="resetBlockedBtn">yahooDirectBlocked'ı Sıfırla</button>
+    <span class="muted-note" id="blockedStatus"></span>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-label">Semboller (ekle / çıkar / düzenle — Yahoo formatında olmalı)</div>
+  <div class="symbol-list" id="symbolList"></div>
+  <div class="symbol-add-row">
+    <input type="text" id="newSymbolInput" placeholder="Yeni sembol (örn. AAPL, TUPRS.IS)…">
+    <button type="button" id="addSymbolBtn">+ Ekle</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-label">Sonuçlar</div>
+  <div style="overflow-x:auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>Sembol</th><th>Fiyat</th><th>Değişim</th><th>Değişim %</th>
+        <th>Piyasa</th><th>Gün İçi Yüksek</th><th>Gün İçi Düşük</th><th>Kaynak</th><th>Süre (ms)</th>
+        <th>Son Güncelleme</th><th>Geçen Süre</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+  </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-label">Konsol (her istek zaman damgalı loglanır)</div>
+  <div class="console" id="console"></div>
+</div>
+
+<script>
+(function() {
+  // ================= Sembol listesi (varsayılanlar, kategorilere ayrılmış) =================
+  let nextId = 1;
+  function mkItem(symbol) { return { id: nextId++, symbol: symbol, invalid: false, lastUpdated: null }; }
+  function mkHeader(label) { return { id: nextId++, header: label }; }
+
+  let symbolItems = [
+    mkHeader('Opsiyonlar'),
+    mkItem('OPRA:SOFI270115C40,0'),
+    mkHeader('ABD Hisseleri'),
+    mkItem('SPCX'), mkItem('AGQ'), mkItem('IWO'), mkItem('AMZN'), mkItem('META'), mkItem('GOOG'),
+    mkItem('CIBR'), mkItem('DE'), mkItem('AVGO'), mkItem('NVDA'), mkItem('PLTR'), mkItem('TSM'),
+    mkItem('RKLB'), mkItem('IRWD'), mkItem('ALXO'), mkItem('ZETA'), mkItem('SGMT'), mkItem('MSTR'),
+    mkItem('P'), mkItem('NKE'), mkItem('XMHQ'), mkItem('NBIS'), mkItem('MU'), mkItem('AMD'), mkItem('SECZ'),
+    mkHeader('BIST Hisseleri'),
+    mkItem('TUPRS.IS'), mkItem('FROTO.IS'), mkItem('EREGL.IS'), mkItem('ENJSA.IS'),
+    mkHeader('Yatırım Fonları'),
+    mkItem('NSK'), mkItem('NNF')
+  ];
+
+  // ================= yahooDirectBlocked (bu sayfaya özel, kalıcı) =================
+  const BLOCKED_KEY = 'yahootest_direct_blocked';
+  let yahooDirectBlocked = (function () {
+    try { return localStorage.getItem(BLOCKED_KEY) === '1'; } catch (e) { return false; }
+  })();
+  function markBlocked() {
+    yahooDirectBlocked = true;
+    try { localStorage.setItem(BLOCKED_KEY, '1'); } catch (e) {}
+    updateBlockedStatus();
+  }
+  function resetBlocked() {
+    yahooDirectBlocked = false;
+    try { localStorage.removeItem(BLOCKED_KEY); } catch (e) {}
+    updateBlockedStatus();
+    log('info', 'yahooDirectBlocked sıfırlandı — bir sonraki "Otomatik" modda doğrudan istek yeniden denenecek.');
+  }
+  function updateBlockedStatus() {
+    document.getElementById('blockedStatus').textContent =
+      `yahooDirectBlocked = ${yahooDirectBlocked}`;
+  }
+
+  // ================= Konsol =================
+  const consoleEl = document.getElementById('console');
+  function log(tag, msg) {
+    const ts = new Date().toLocaleTimeString('tr-TR', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+    const line = document.createElement('div');
+    line.className = 'line';
+    line.innerHTML = `<span class="ts">${ts}</span><span class="tag ${tag}">[${tag.toUpperCase()}]</span><span></span>`;
+    line.lastElementChild.textContent = msg;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+  log('warn', 'Not: Tarayıcının kendi ağ hatası satırları ("Access to fetch...", "Failed to load resource") bu konsolun DIŞINDA, doğrudan Geliştirici Araçları\'na düşer — bunlar tarayıcının kendi loglarıdır, bu sayfa tarafından üretilmez/engellenemez. Buradaki konsol yalnızca bu sayfanın kendi özetlerini gösterir.');
+  log('warn', '"A listener indicated an asynchronous response..." ve "file: URLs are treated as unique security origins" gibi mesajlar genellikle tarayıcı uzantılarından (reklam engelleyici, şifre yöneticisi vb.) kaynaklanır — bu sayfanın kodundan gelmez, yoksayabilirsiniz.');
+
+  // ================= Çoklu CORS proxy zinciri =================
+  const PROXY_BUILDERS = [
+    { name: 'allorigins', build: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
+    { name: 'corsproxy.io', build: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}` },
+    { name: 'codetabs', build: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` }
+  ];
+
+  async function tryDirect(targetUrl) {
+    const res = await fetch(targetUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+  async function tryProxyChain(targetUrl, logTicker) {
+    let lastErr = null;
+    for (const proxy of PROXY_BUILDERS) {
+      try {
+        const res = await fetch(proxy.build(targetUrl));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        return { json, proxyName: proxy.name };
+      } catch (e) {
+        lastErr = e;
+        log('warn', `${logTicker} → proxy "${proxy.name}" başarısız: ${e.message} — sıradaki proxy deneniyor.`);
+      }
+    }
+    throw new Error(`Tüm proxy'ler başarısız (son hata: ${lastErr ? lastErr.message : 'bilinmiyor'})`);
+  }
+
+  const MARKET_STATE_LABELS = {
+    REGULAR: 'Açık', CLOSED: 'Kapalı', PRE: 'Açılış Öncesi', PREPRE: 'Açılış Öncesi',
+    POST: 'Kapanış Sonrası', POSTPOST: 'Kapanış Sonrası'
+  };
+  const MARKET_STATE_CLASS = {
+    REGULAR: 'open', CLOSED: 'closed', PRE: 'pre', PREPRE: 'pre', POST: 'post', POSTPOST: 'post'
+  };
+
+  // ================= Tek sembol sorgusu =================
+  async function fetchOne(item, mode) {
+    const symbol = item.symbol;
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
+    const t0 = performance.now();
+    let json, path;
+
+    log('info', `${symbol} → istek başlıyor (mod: ${mode})`);
+
+    try {
+      if (mode === 'proxy') {
+        const r = await tryProxyChain(targetUrl, symbol);
+        json = r.json; path = `PROXY (${r.proxyName})`;
+      } else if (mode === 'direct') {
+        json = await tryDirect(targetUrl); path = 'DOĞRUDAN (zorunlu)';
+      } else {
+        if (yahooDirectBlocked) {
+          const r = await tryProxyChain(targetUrl, symbol);
+          json = r.json; path = `PROXY (${r.proxyName})`;
+        } else {
+          try {
+            json = await tryDirect(targetUrl); path = 'DOĞRUDAN';
+          } catch (directErr) {
+            log('err', `${symbol} → DOĞRUDAN başarısız (${directErr.message}) → yahooDirectBlocked=true, proxy zinciri deneniyor`);
+            markBlocked();
+            const r = await tryProxyChain(targetUrl, symbol);
+            json = r.json; path = `PROXY (${r.proxyName})`;
+          }
+        }
+      }
+    } catch (e) {
+      // Ağ/proxy düzeyinde başarısızlık — GEÇİCİ, ticker'ı geçersiz saymıyoruz.
+      const elapsed = Math.round(performance.now() - t0);
+      log('err', `${symbol} → HATA (${elapsed}ms): ${e.message}`);
+      item.lastUpdated = Date.now();
+      return { item, error: e.message, elapsed, path: 'AĞ/PROXY HATASI', permanent: false };
+    }
+
+    const elapsed = Math.round(performance.now() - t0);
+    item.lastUpdated = Date.now();
+
+    // Yahoo'dan yanıt geldi (ağ katmanı başarılı) — şimdi Yahoo'nun kendisi ne diyor bakalım.
+    if (json && json.chart && json.chart.error) {
+      const msg = json.chart.error.description || json.chart.error.code || 'Yahoo API hatası';
+      log('err', `${symbol} → Yahoo KESİN olarak hata döndü (${elapsed}ms, ${path}): ${msg} — bu sembol için sorgu durduruluyor.`);
+      return { item, error: msg, elapsed, path, permanent: true };
+    }
+    const meta = json && json.chart && json.chart.result && json.chart.result[0] && json.chart.result[0].meta;
+    if (!meta || typeof meta.regularMarketPrice !== 'number') {
+      log('err', `${symbol} → Yahoo yanıt verdi ama fiyat verisi yok (${elapsed}ms, ${path}) — sembol muhtemelen geçersiz, sorgu durduruluyor.`);
+      return { item, error: 'Fiyat verisi bulunamadı (sembol geçersiz olabilir)', elapsed, path, permanent: true };
+    }
+
+    const price = meta.regularMarketPrice;
+    const prevClose = (typeof meta.previousClose === 'number') ? meta.previousClose
+      : (typeof meta.chartPreviousClose === 'number' ? meta.chartPreviousClose : null);
+    const change = (prevClose !== null) ? (price - prevClose) : null;
+    const changePct = (prevClose !== null && prevClose !== 0) ? (change / prevClose * 100) : null;
+    const marketState = meta.marketState || '—';
+    const dayHigh = (typeof meta.regularMarketDayHigh === 'number') ? meta.regularMarketDayHigh : null;
+    const dayLow = (typeof meta.regularMarketDayLow === 'number') ? meta.regularMarketDayLow : null;
+    const currency = meta.currency || '';
+
+    log('ok', `${symbol} → başarılı (${elapsed}ms, ${path}): ${price} ${currency}`);
+
+    return { item, price, change, changePct, marketState, dayHigh, dayLow, currency, elapsed, path };
+  }
+
+  function fmtNum(n, digits) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  }
+  function sourceClass(path) {
+    if (!path) return '';
+    if (path.indexOf('PROXY') !== -1) return 'src-proxy';
+    if (path.indexOf('DOĞRUDAN') !== -1) return 'src-direct';
+    return 'src-error';
+  }
+  function fmtElapsedSince(ts) {
+    if (!ts) return '—';
+    return Math.floor((Date.now() - ts) / 1000) + 's';
+  }
+  function elapsedClass(ts) {
+    if (!ts) return '';
+    const secs = (Date.now() - ts) / 1000;
+    const period = Math.max(5, Number(document.getElementById('autoRefreshSeconds').value) || 30);
+    return secs < period ? 'elapsed-ok' : 'elapsed-stale';
+  }
+
+  // ================= Sonuç tablosu =================
+  function renderResultRow(result) {
+    const item = result.item;
+    const row = document.getElementById('row_' + item.id);
+    if (!row) return;
+    const now = item.lastUpdated ? new Date(item.lastUpdated).toLocaleTimeString('tr-TR', { hour12: false }) : '—';
+
+    if (result.error) {
+      const rowClass = item.invalid ? ' class="invalid-row"' : '';
+      row.outerHTML = `<tr id="row_${item.id}"${rowClass}>
+        <td>${item.symbol}${item.invalid ? '<span class="invalid-tag">GEÇERSİZ</span>' : ''}</td>
+        ${item.invalid
+          ? `<td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td>`
+          : `<td colspan="6" style="color:var(--accent); text-align:left;">HATA: ${result.error}</td>`}
+        <td class="${sourceClass(result.path)}">${result.path}</td>
+        <td>${result.elapsed}</td>
+        <td>${now}</td>
+        <td id="elapsed_${item.id}" class="${elapsedClass(item.lastUpdated)}">${fmtElapsedSince(item.lastUpdated)}</td>
+      </tr>`;
+      return;
+    }
+
+    const changeClass = result.change > 0 ? 'pos' : (result.change < 0 ? 'neg' : '');
+    const stateLabel = MARKET_STATE_LABELS[result.marketState] || result.marketState;
+    const stateClass = MARKET_STATE_CLASS[result.marketState] || 'closed';
+    row.outerHTML = `<tr id="row_${item.id}">
+      <td>${item.symbol}</td>
+      <td>${fmtNum(result.price, 2)}</td>
+      <td class="${changeClass}">${result.change > 0 ? '+' : ''}${fmtNum(result.change, 2)}</td>
+      <td class="${changeClass}">${result.changePct > 0 ? '+' : ''}${fmtNum(result.changePct, 2)}%</td>
+      <td><span class="badge ${stateClass}">${stateLabel}</span></td>
+      <td>${fmtNum(result.dayHigh, 2)}</td>
+      <td>${fmtNum(result.dayLow, 2)}</td>
+      <td class="${sourceClass(result.path)}">${result.path}</td>
+      <td>${result.elapsed}</td>
+      <td>${now}</td>
+      <td id="elapsed_${item.id}" class="${elapsedClass(item.lastUpdated)}">${fmtElapsedSince(item.lastUpdated)}</td>
+    </tr>`;
+  }
+
+  function realItems() { return symbolItems.filter(x => !x.header); }
+
+  function ensureResultRows() {
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = realItems().map(item => `
+      <tr id="row_${item.id}">
+        <td>${item.symbol}</td>
+        <td colspan="10" class="muted-note" style="text-align:left;">Henüz sorgulanmadı</td>
+      </tr>`).join('');
+  }
+
+  // ================= Yenileme döngüsü =================
+  const PARALLEL_CHUNK = 5;
+  let refreshing = false;
+
+  async function refreshAll() {
+    if (refreshing) { log('info', 'Önceki yenileme hâlâ devam ediyor, atlandı.'); return; }
+    refreshing = true;
+    document.getElementById('refreshBtn').disabled = true;
+    const mode = document.getElementById('modeSelect').value;
+    const items = realItems().filter(it => !it.invalid);
+    if (!items.length) {
+      log('info', 'Sorgulanacak geçerli sembol yok (hepsi geçersiz işaretli veya liste boş).');
+      refreshing = false;
+      document.getElementById('refreshBtn').disabled = false;
+      return;
+    }
+    log('info', `── Yenileme başladı — mod: ${mode}, yahooDirectBlocked: ${yahooDirectBlocked}, ${items.length} sembol ──`);
+    const t0 = performance.now();
+
+    async function processChunk(chunk) {
+      const results = await Promise.all(chunk.map(it => fetchOne(it, mode)));
+      results.forEach(r => {
+        if (r.permanent) { r.item.invalid = true; }
+        renderResultRow(r);
+      });
+    }
+
+    try {
+      if (mode === 'auto' && items.length > 1) {
+        const [first, ...rest] = items;
+        await processChunk([first]);
+        log('info', `İlk istek sonrası yahooDirectBlocked: ${yahooDirectBlocked} — kalan ${rest.length} sembol ${PARALLEL_CHUNK}'li gruplar halinde işlenecek.`);
+        for (let i = 0; i < rest.length; i += PARALLEL_CHUNK) {
+          await processChunk(rest.slice(i, i + PARALLEL_CHUNK));
+        }
+      } else {
+        for (let i = 0; i < items.length; i += PARALLEL_CHUNK) {
+          await processChunk(items.slice(i, i + PARALLEL_CHUNK));
+        }
+      }
+    } finally {
+      const totalMs = Math.round(performance.now() - t0);
+      log('info', `── Yenileme tamamlandı (${totalMs}ms toplam) ──`);
+      refreshing = false;
+      document.getElementById('refreshBtn').disabled = false;
+    }
+  }
+
+  // ================= Sembol listesi UI =================
+  function renderSymbolList() {
+    const container = document.getElementById('symbolList');
+    container.innerHTML = symbolItems.map(item => {
+      if (item.header) {
+        return `<div class="symbol-group-header">${item.header}</div>`;
+      }
+      return `
+        <div class="symbol-row" data-id="${item.id}">
+          <input type="text" value="${item.symbol.replace(/"/g, '&quot;')}" data-role="symbol-input" data-id="${item.id}">
+          <button type="button" data-role="remove-btn" data-id="${item.id}" title="Kaldır">✕</button>
+        </div>`;
+    }).join('');
+
+    container.querySelectorAll('[data-role="symbol-input"]').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const id = Number(inp.dataset.id);
+        const item = symbolItems.find(x => x.id === id);
+        if (!item) return;
+        const newVal = inp.value.trim();
+        if (newVal && newVal !== item.symbol) {
+          log('info', `Sembol düzenlendi: "${item.symbol}" → "${newVal}" (geçersiz işareti temizlendi)`);
+          item.symbol = newVal;
+          item.invalid = false;
+          item.lastUpdated = null;
+          ensureResultRows();
+        }
+      });
+    });
+    container.querySelectorAll('[data-role="remove-btn"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.id);
+        symbolItems = symbolItems.filter(x => x.id !== id);
+        renderSymbolList();
+        ensureResultRows();
+      });
+    });
+  }
+
+  document.getElementById('addSymbolBtn').addEventListener('click', () => {
+    const input = document.getElementById('newSymbolInput');
+    const val = input.value.trim();
+    if (!val) return;
+    symbolItems.push(mkItem(val));
+    input.value = '';
+    renderSymbolList();
+    ensureResultRows();
+    log('info', `Yeni sembol eklendi: ${val}`);
+  });
+  document.getElementById('newSymbolInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSymbolBtn').click(); }
+  });
+
+  // ================= Kontrol butonları =================
+  document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+  document.getElementById('resetBlockedBtn').addEventListener('click', resetBlocked);
+
+  let autoTimer = null;
+  function stopAutoRefresh(logMsg) {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    document.getElementById('autoRefreshToggle').checked = false;
+    if (logMsg) log('info', logMsg);
+  }
+  document.getElementById('stopAutoBtn').addEventListener('click', () => stopAutoRefresh('Periyodik yenileme durduruldu.'));
+  document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    if (e.target.checked) {
+      const secs = Math.max(5, Number(document.getElementById('autoRefreshSeconds').value) || 30);
+      log('info', `Otomatik yenileme açıldı — her ${secs} saniyede bir.`);
+      autoTimer = setInterval(refreshAll, secs * 1000);
+    } else {
+      log('info', 'Otomatik yenileme kapatıldı.');
+    }
+  });
+
+  // ================= Geçen süre sayaçları (1 saniyede bir tik) =================
+  setInterval(() => {
+    realItems().forEach(item => {
+      const el = document.getElementById('elapsed_' + item.id);
+      if (el) {
+        el.textContent = fmtElapsedSince(item.lastUpdated);
+        el.className = elapsedClass(item.lastUpdated);
+      }
+    });
+  }, 1000);
+
+  // ================= Başlangıç =================
+  renderSymbolList();
+  ensureResultRows();
+  updateBlockedStatus();
+  log('info', `Sayfa hazır — ${realItems().length} sembol yüklü. "Yenile" ile ilk isteği başlatabilirsiniz.`);
+})();
+</script>
+</body>
+</html>
