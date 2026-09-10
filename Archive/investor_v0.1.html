@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investor — Yatırım Takip Sistemi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FBF9F5;
+    --bg-elevated: #FFFFFF;
+    --bg-inset: #F2EFE8;
+    --text: #211D19;
+    --text-muted: #6B6459;
+    --border: #E3DDD1;
+    --accent: #FF4B3E;
+    --accent-soft: #FFEAE7;
+    --ok: #2E7D4F;
+    --ok-soft: #E7F4EC;
+    --warn: #B5860A;
+    --warn-soft: #FCF3DD;
+    --shadow: 0 1px 2px rgba(33,29,25,0.04), 0 8px 24px rgba(33,29,25,0.06);
+    --radius: 10px;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Fraunces', serif;
+    --sans: 'Inter', sans-serif;
+  }
+  html.dark {
+    --bg: #17140F;
+    --bg-elevated: #1F1B15;
+    --bg-inset: #241F18;
+    --text: #F2EEE5;
+    --text-muted: #A69C8C;
+    --border: #332C22;
+    --accent: #FF6355;
+    --accent-soft: #3A1D18;
+    --ok: #5CC98A;
+    --ok-soft: #16281D;
+    --warn: #E0B23D;
+    --warn-soft: #2E2510;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    transition: background .2s ease, color .2s ease;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 {
+    font-family: var(--serif); font-weight: 600; font-size: 20px; margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .version-pill {
+    font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+    border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px;
+  }
+  .phase-pill {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    background: var(--accent-soft); padding: 2px 8px; border-radius: 20px;
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-elevated); color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .icon-btn:hover { border-color: var(--accent); }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 1040px; margin: 0 auto; padding: 28px 24px 80px; }
+  .lede { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0 0 28px; max-width: 640px; }
+  .lede b { color: var(--text); font-weight: 600; }
+
+  section.block { margin-bottom: 28px; }
+  .block-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .block-head h2 {
+    font-family: var(--serif); font-size: 16px; font-weight: 600; margin: 0;
+  }
+  .block-head .hint { font-size: 12px; color: var(--text-muted); }
+
+  /* ---------- Status card ---------- */
+  .status-card {
+    background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: var(--warn); box-shadow: 0 0 0 4px var(--warn-soft);
+    transition: background .2s, box-shadow .2s;
+  }
+  .status-dot.ok { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+  .status-dot.err { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .status-text { font-size: 14px; }
+  .status-text .main { font-weight: 600; }
+  .status-text .sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+
+  /* ---------- Table grid ---------- */
+  .table-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+  }
+  .table-card {
+    background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .table-card .name { font-family: var(--mono); font-size: 13px; font-weight: 600; display:flex; align-items:center; gap:6px; }
+  .table-card .fk-tag {
+    font-size: 9px; font-family: var(--mono); color: var(--text-muted);
+    border: 1px solid var(--border); padding: 0 5px; border-radius: 4px;
+  }
+  .table-card .meta { margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+  .table-card .rowcount { font-family: var(--mono); color: var(--text); font-weight: 600; }
+
+  /* ---------- Controls ---------- */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+  button.action {
+    font-family: var(--sans); font-size: 13.5px; font-weight: 600;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-elevated); color: var(--text); cursor: pointer;
+    transition: transform .1s ease, border-color .15s ease;
+  }
+  button.action:hover { border-color: var(--accent); }
+  button.action:active { transform: scale(0.98); }
+  button.action.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.action.primary:hover { opacity: .92; }
+  button.action.danger { color: var(--accent); }
+  button.action:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ---------- Console ---------- */
+  .console {
+    background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+    padding: 14px 16px; height: 260px; overflow-y: auto;
+  }
+  .console .line { display: flex; gap: 10px; white-space: pre-wrap; word-break: break-word; }
+  .console .ts { color: var(--text-muted); flex-shrink: 0; }
+  .console .tag { flex-shrink: 0; font-weight: 600; }
+  .console .tag.info { color: var(--text-muted); }
+  .console .tag.ok { color: var(--ok); }
+  .console .tag.err { color: var(--accent); }
+  .console .tag.sql { color: var(--warn); }
+
+  /* ---------- Schema viewer ---------- */
+  details.schema { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  details.schema summary {
+    padding: 13px 16px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+    list-style: none; display: flex; align-items: center; justify-content: space-between;
+  }
+  details.schema summary::-webkit-details-marker { display: none; }
+  details.schema summary .chev { color: var(--text-muted); transition: transform .15s ease; }
+  details.schema[open] summary .chev { transform: rotate(90deg); }
+  details.schema pre {
+    margin: 0; padding: 4px 16px 18px; font-family: var(--mono); font-size: 12px; line-height: 1.65;
+    color: var(--text-muted); overflow-x: auto; border-top: 1px solid var(--border);
+  }
+  details.schema pre .kw { color: var(--accent); }
+
+  .result-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; margin-top: 10px; }
+  .result-table th, .result-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .result-table th { color: var(--text-muted); font-weight: 600; }
+
+  footer { text-align: center; color: var(--text-muted); font-size: 11.5px; padding: 20px 24px 40px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Investor</h1>
+    <span class="version-pill">v0.1</span>
+    <span class="phase-pill">Faz 1 · DB Şema</span>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" id="themeToggle" title="Tema değiştir">◐</button>
+  </div>
+</header>
+
+<main>
+  <p class="lede">
+    Bu, <b>Investor — Yatırım Takip Sistemi</b>'nin Faz 1 doğrulama panelidir. Amaç: sql.js (SQLite/WASM)
+    motorunun tarayıcıda başlatılması ve 7 tablodan oluşan şemanın hatasız kurulması. Henüz kalıcı disk
+    senkronizasyonu yok (Faz 2), henüz gerçek UI yok (Faz 3) — veritabanı yalnızca sayfa açıkken bellekte tutulur,
+    sayfa yenilenince sıfırlanır.
+  </p>
+
+  <section class="block">
+    <div class="block-head"><h2>Motor Durumu</h2></div>
+    <div class="status-card">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="status-text">
+        <div class="main" id="statusMain">sql.js yükleniyor…</div>
+        <div class="sub" id="statusSub">WebAssembly modülü CDN'den indiriliyor</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>Şema Özeti</h2>
+      <span class="hint">7 tablo, dokümandaki SQL şeması birebir</span>
+    </div>
+    <div class="table-grid" id="tableGrid">
+      <!-- JS ile doldurulur -->
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h2>Test Kontrolleri</h2></div>
+    <div class="controls">
+      <button class="action primary" id="btnInsert" disabled>Test Satırı Ekle</button>
+      <button class="action" id="btnSelect" disabled>Test Sorgusu Çalıştır</button>
+      <button class="action" id="btnRefresh" disabled>Satır Sayılarını Yenile</button>
+      <button class="action danger" id="btnReset" disabled>Şemayı Sıfırla</button>
+    </div>
+  </section>
+
+  <section class="block" id="resultSection" style="display:none;">
+    <div class="block-head"><h2>Sorgu Sonucu</h2></div>
+    <div id="resultOutput"></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h2>Konsol</h2></div>
+    <div class="console" id="console"></div>
+  </section>
+
+  <section class="block">
+    <details class="schema">
+      <summary>SQL Şeması (CREATE TABLE ifadeleri) <span class="chev">›</span></summary>
+      <pre id="schemaSql"></pre>
+    </details>
+  </section>
+</main>
+
+<footer>Investor v0.1 — Faz 1: DB Şema + sql.js Entegrasyonu</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.js"></script>
+<script>
+(function() {
+  // ---------- Theme ----------
+  const root = document.documentElement;
+  const savedTheme = localStorage.getItem('investor_theme');
+  if (savedTheme === 'dark' || (!savedTheme && matchMedia('(prefers-color-scheme: dark)').matches)) {
+    root.classList.add('dark');
+  }
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    root.classList.toggle('dark');
+    localStorage.setItem('investor_theme', root.classList.contains('dark') ? 'dark' : 'light');
+  });
+
+  // ---------- Schema definition ----------
+  const SCHEMA = [
+    {
+      name: 'asset_master', fk: false,
+      sql: `CREATE TABLE asset_master (
+  id INTEGER PRIMARY KEY,
+  ticker TEXT UNIQUE NOT NULL,
+  company_name TEXT,
+  asset_type TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  last_updated TIMESTAMP
+);`
+    },
+    {
+      name: 'investment_transactions', fk: true,
+      sql: `CREATE TABLE investment_transactions (
+  id INTEGER PRIMARY KEY,
+  execution_datetime TEXT NOT NULL,
+  order_type TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  transaction_type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  quantity REAL NOT NULL,
+  execution_price REAL NOT NULL,
+  commission REAL NOT NULL,
+  currency TEXT NOT NULL,
+  hidden INTEGER DEFAULT 0,
+  FOREIGN KEY(ticker) REFERENCES asset_master(ticker)
+);`
+    },
+    {
+      name: 'account_transactions', fk: false,
+      sql: `CREATE TABLE account_transactions (
+  id INTEGER PRIMARY KEY,
+  request_datetime TEXT NOT NULL,
+  execution_datetime TEXT NOT NULL,
+  type TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL,
+  amount REAL NOT NULL,
+  currency TEXT NOT NULL,
+  hidden INTEGER DEFAULT 0
+);`
+    },
+    {
+      name: 'dividend_transactions', fk: true,
+      sql: `CREATE TABLE dividend_transactions (
+  id INTEGER PRIMARY KEY,
+  payment_date TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  gross_dividend REAL NOT NULL,
+  withholding REAL NOT NULL,
+  net_dividend REAL NOT NULL,
+  currency TEXT NOT NULL,
+  hidden INTEGER DEFAULT 0,
+  FOREIGN KEY(ticker) REFERENCES asset_master(ticker)
+);`
+    },
+    {
+      name: 'share_transfers', fk: true,
+      sql: `CREATE TABLE share_transfers (
+  id INTEGER PRIMARY KEY,
+  transfer_date TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  quantity REAL NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL,
+  hidden INTEGER DEFAULT 0,
+  FOREIGN KEY(ticker) REFERENCES asset_master(ticker)
+);`
+    },
+    {
+      name: 'asset_tags', fk: true,
+      sql: `CREATE TABLE asset_tags (
+  ticker TEXT NOT NULL,
+  tag_name TEXT NOT NULL,
+  PRIMARY KEY (ticker, tag_name),
+  FOREIGN KEY(ticker) REFERENCES asset_master(ticker)
+);`
+    },
+    {
+      name: 'calc_debug_log', fk: false,
+      sql: `CREATE TABLE calc_debug_log (
+  id INTEGER PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  execution_datetime TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  old_pl REAL,
+  new_pl REAL,
+  created_at TIMESTAMP
+);`
+    }
+  ];
+
+  // ---------- Console logging ----------
+  const consoleEl = document.getElementById('console');
+  function log(tag, msg) {
+    const ts = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+    const line = document.createElement('div');
+    line.className = 'line';
+    line.innerHTML = `<span class="ts">${ts}</span><span class="tag ${tag}">[${tag.toUpperCase()}]</span><span>${msg}</span>`;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  // ---------- Status ----------
+  function setStatus(state, main, sub) {
+    const dot = document.getElementById('statusDot');
+    dot.className = 'status-dot' + (state === 'ok' ? ' ok' : state === 'err' ? ' err' : '');
+    document.getElementById('statusMain').textContent = main;
+    document.getElementById('statusSub').textContent = sub;
+  }
+
+  // ---------- Render schema SQL block ----------
+  document.getElementById('schemaSql').textContent = SCHEMA.map(t => t.sql).join('\n\n');
+
+  // ---------- Render table grid ----------
+  function renderTableGrid(db) {
+    const grid = document.getElementById('tableGrid');
+    grid.innerHTML = '';
+    SCHEMA.forEach(t => {
+      let count = '—';
+      try {
+        const res = db.exec(`SELECT COUNT(*) FROM ${t.name}`);
+        count = res.length ? res[0].values[0][0] : 0;
+      } catch (e) { count = 'hata'; }
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      card.innerHTML = `
+        <div class="name">${t.name} ${t.fk ? '<span class="fk-tag">FK</span>' : ''}</div>
+        <div class="meta"><span>satır sayısı</span><span class="rowcount">${count}</span></div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  // ---------- Main ----------
+  let db = null;
+
+  initSqlJs({ locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}` })
+    .then(SQL => {
+      log('ok', 'sql.js WASM modülü başarıyla yüklendi.');
+      setStatus('warn', 'Şema oluşturuluyor…', 'CREATE TABLE ifadeleri çalıştırılıyor');
+      db = new SQL.Database();
+      createSchema(db);
+      renderTableGrid(db);
+      setStatus('ok', 'DB hazır ✓', '7 tablo başarıyla oluşturuldu — veritabanı yalnızca bellekte (persistence Faz 2\'de gelecek)');
+      enableButtons();
+    })
+    .catch(err => {
+      log('err', 'sql.js yüklenemedi: ' + err.message);
+      setStatus('err', 'Motor başlatılamadı', 'CDN erişimi veya WASM yükleme hatası — konsolu kontrol edin');
+    });
+
+  function createSchema(db) {
+    SCHEMA.forEach(t => {
+      try {
+        db.run(t.sql);
+        log('sql', `CREATE TABLE ${t.name} → OK`);
+      } catch (e) {
+        log('err', `CREATE TABLE ${t.name} → HATA: ${e.message}`);
+      }
+    });
+  }
+
+  function enableButtons() {
+    ['btnInsert', 'btnSelect', 'btnRefresh', 'btnReset'].forEach(id => {
+      document.getElementById(id).disabled = false;
+    });
+  }
+
+  // ---------- Test: Insert ----------
+  document.getElementById('btnInsert').addEventListener('click', () => {
+    if (!db) return;
+    try {
+      const ticker = 'TEST' + Math.floor(Math.random() * 1000);
+      db.run(
+        `INSERT INTO asset_master (ticker, company_name, asset_type, currency, last_updated) VALUES (?, ?, ?, ?, ?)`,
+        [ticker, 'Test Şirketi A.Ş.', 'Amerikan Hisse Senetleri', 'USD', new Date().toISOString()]
+      );
+      db.run(
+        `INSERT INTO investment_transactions (execution_datetime, order_type, ticker, transaction_type, status, quantity, execution_price, commission, currency, hidden)
+         VALUES (?, 'Limit Emri', ?, 'Alış', 'Gerçekleşti', 10, 9.00, 1.50, 'USD', 0)`,
+        ['21/08/26 14:00:00', ticker]
+      );
+      log('ok', `Test satırı eklendi → asset_master.ticker = ${ticker}, ilişkili 1 investment_transaction satırı.`);
+      renderTableGrid(db);
+    } catch (e) {
+      log('err', 'Insert testi başarısız: ' + e.message);
+    }
+  });
+
+  // ---------- Test: Select ----------
+  document.getElementById('btnSelect').addEventListener('click', () => {
+    if (!db) return;
+    const resultSection = document.getElementById('resultSection');
+    const output = document.getElementById('resultOutput');
+    try {
+      const res = db.exec(`
+        SELECT a.ticker, a.company_name, a.asset_type, a.currency, t.transaction_type, t.quantity, t.execution_price
+        FROM asset_master a
+        LEFT JOIN investment_transactions t ON t.ticker = a.ticker
+        ORDER BY a.id DESC LIMIT 20
+      `);
+      if (!res.length || !res[0].values.length) {
+        output.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Sonuç yok — önce "Test Satırı Ekle" ile veri oluşturun.</p>';
+        log('info', 'Test sorgusu çalıştırıldı, sonuç boş.');
+      } else {
+        const cols = res[0].columns;
+        const rows = res[0].values;
+        let html = '<table class="result-table"><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+        rows.forEach(r => { html += '<tr>' + r.map(v => `<td>${v === null ? '—' : v}</td>`).join('') + '</tr>'; });
+        html += '</tbody></table>';
+        output.innerHTML = html;
+        log('ok', `Test sorgusu çalıştırıldı, ${rows.length} satır döndü (asset_master ⋈ investment_transactions).`);
+      }
+      resultSection.style.display = 'block';
+    } catch (e) {
+      log('err', 'Select testi başarısız: ' + e.message);
+    }
+  });
+
+  // ---------- Refresh counts ----------
+  document.getElementById('btnRefresh').addEventListener('click', () => {
+    if (!db) return;
+    renderTableGrid(db);
+    log('info', 'Tablo satır sayıları yenilendi.');
+  });
+
+  // ---------- Reset schema ----------
+  document.getElementById('btnReset').addEventListener('click', () => {
+    if (!db) return;
+    if (!confirm('Şema sıfırlanacak: tüm test verileri silinip 7 tablo yeniden oluşturulacak. Devam edilsin mi?')) return;
+    try {
+      [...SCHEMA].reverse().forEach(t => {
+        db.run(`DROP TABLE IF EXISTS ${t.name}`);
+      });
+      log('info', 'Mevcut tablolar silindi.');
+      createSchema(db);
+      renderTableGrid(db);
+      document.getElementById('resultSection').style.display = 'none';
+      log('ok', 'Şema sıfırlandı ve yeniden oluşturuldu.');
+    } catch (e) {
+      log('err', 'Sıfırlama başarısız: ' + e.message);
+    }
+  });
+})();
+</script>
+</body>
+</html>
