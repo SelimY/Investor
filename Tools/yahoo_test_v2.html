@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Yahoo Finance Bağlantı Testi</title>
+<link rel="icon" href="data:,">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -88,8 +89,10 @@ tr:last-child td{ border-bottom:none; }
 
 <h1>Yahoo Finance Bağlantı Testi</h1>
 <p class="subtitle">
-  Veritabanı yok, statik test sayfası. Önce doğrudan istek, başarısız olursa sırayla birden fazla CORS proxy dener
-  (tek bir proxy'ye artık güvenilmiyor — konsolunda gördüğümüz gibi allorigins.win de zaman zaman 500/522 dönüyor).
+  Veritabanı yok, statik test sayfası. <code>file://</code> ve <code>https://selimy.github.io</code> dahil üç ayrı
+  ortamda doğrudan Yahoo erişimi hiç başarılı olmadığı için varsayılan artık doğrudan denemeden sırayla birden fazla
+  CORS proxy'yi sırayla deniyor (tek bir proxy'ye güvenilmiyor — allorigins.win zaman zaman 500/522 dönebiliyor).
+  "yahooDirectBlocked'ı Sıfırla" ile Yahoo'nun politikası değiştiyse diye doğrudan erişimi elle yeniden test edebilirsin.
   Yahoo'nun kendisi "bu sembol yok" derse o sembol için sorgu tamamen durur ve tabloda "x" gösterilir; ağ/proxy
   hataları ise geçicidir, bir sonraki döngüde tekrar denenir.
 </p>
@@ -99,7 +102,7 @@ tr:last-child td{ border-bottom:none; }
   <div class="controls">
     <label>Mod:
       <select id="modeSelect">
-        <option value="auto">Otomatik (Doğrudan dene → CORS'a takılırsa Proxy zinciri)</option>
+        <option value="auto">Otomatik (varsayılan: Proxy zinciri — Sıfırla'ya basılırsa doğrudan yeniden denenir)</option>
         <option value="direct">Sadece Doğrudan (proxy'ye hiç düşme)</option>
         <option value="proxy">Sadece Proxy Zinciri (doğrudan hiç deneme)</option>
       </select>
@@ -165,9 +168,15 @@ tr:last-child td{ border-bottom:none; }
   ];
 
   // ================= yahooDirectBlocked (bu sayfaya özel, kalıcı) =================
+  // v3: file:// ve https://selimy.github.io dahil 3 ayrı ortamda doğrudan erişim hiç başarılı olmadığı için
+  // varsayılan artık "engelli" (true) — yalnızca kullanıcı elle "Sıfırla"ya basarsa bir sonraki istekte
+  // doğrudan erişim yeniden denenir. Bu, gereksiz CORS konsol hatalarını baştan önler.
   const BLOCKED_KEY = 'yahootest_direct_blocked';
   let yahooDirectBlocked = (function () {
-    try { return localStorage.getItem(BLOCKED_KEY) === '1'; } catch (e) { return false; }
+    try {
+      const stored = localStorage.getItem(BLOCKED_KEY);
+      return stored === null ? true : stored === '1';
+    } catch (e) { return true; }
   })();
   function markBlocked() {
     yahooDirectBlocked = true;
@@ -176,9 +185,9 @@ tr:last-child td{ border-bottom:none; }
   }
   function resetBlocked() {
     yahooDirectBlocked = false;
-    try { localStorage.removeItem(BLOCKED_KEY); } catch (e) {}
+    try { localStorage.setItem(BLOCKED_KEY, '0'); } catch (e) {}
     updateBlockedStatus();
-    log('info', 'yahooDirectBlocked sıfırlandı — bir sonraki "Otomatik" modda doğrudan istek yeniden denenecek.');
+    log('info', 'yahooDirectBlocked sıfırlandı — bir sonraki istekte doğrudan erişim yeniden denenecek (yalnızca o istek için; başarısız olursa hemen tekrar "engelli"ye döner).');
   }
   function updateBlockedStatus() {
     document.getElementById('blockedStatus').textContent =
@@ -403,7 +412,9 @@ tr:last-child td{ border-bottom:none; }
     }
 
     try {
-      if (mode === 'auto' && items.length > 1) {
+      if (mode === 'auto' && !yahooDirectBlocked && items.length > 1) {
+        // yahooDirectBlocked henüz belirlenmemiş/az önce sıfırlanmış — önce TEK sembolle güvenli test et,
+        // böylece birden fazla sembol aynı anda gereksiz yere doğrudan denemeyip hepsi CORS hatası vermesin.
         const [first, ...rest] = items;
         await processChunk([first]);
         log('info', `İlk istek sonrası yahooDirectBlocked: ${yahooDirectBlocked} — kalan ${rest.length} sembol ${PARALLEL_CHUNK}'li gruplar halinde işlenecek.`);
@@ -411,6 +422,7 @@ tr:last-child td{ border-bottom:none; }
           await processChunk(rest.slice(i, i + PARALLEL_CHUNK));
         }
       } else {
+        // yahooDirectBlocked zaten true (varsayılan durum) — probe adımına gerek yok, direkt paralel işle.
         for (let i = 0; i < items.length; i += PARALLEL_CHUNK) {
           await processChunk(items.slice(i, i + PARALLEL_CHUNK));
         }
