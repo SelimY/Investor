@@ -90,29 +90,23 @@ tr:last-child td{ border-bottom:none; }
 <h1>Yahoo Finance Bağlantı Testi</h1>
 <p class="subtitle">
   Veritabanı yok, statik test sayfası. <code>file://</code> ve <code>https://selimy.github.io</code> dahil üç ayrı
-  ortamda doğrudan Yahoo erişimi hiç başarılı olmadığı için varsayılan artık doğrudan denemeden sırayla birden fazla
-  CORS proxy'yi sırayla deniyor (tek bir proxy'ye güvenilmiyor — allorigins.win zaman zaman 500/522 dönebiliyor).
-  "yahooDirectBlocked'ı Sıfırla" ile Yahoo'nun politikası değiştiyse diye doğrudan erişimi elle yeniden test edebilirsin.
-  Yahoo'nun kendisi "bu sembol yok" derse o sembol için sorgu tamamen durur ve tabloda "x" gösterilir; ağ/proxy
+  ortamda doğrudan Yahoo erişimi ve genel CORS proxy'leri güvenilir çalışmadığı için artık kendi Cloudflare Worker'ımız
+  üzerinden gidiyoruz. İstek tarayıcıdan değil, Worker'dan (sunucu-sunucu) Yahoo'ya gidiyor — CORS diye bir sorun yok,
+  Worker kendi yanıtına gerekli başlığı ekliyor. Tüm semboller tek bir istekte, Worker içinde paralel olarak çekiliyor.
+  Yahoo'nun kendisi "bu sembol yok" derse o sembol için sorgu tamamen durur ve tabloda "x" gösterilir; ağ/Worker
   hataları ise geçicidir, bir sonraki döngüde tekrar denenir.
 </p>
 
 <div class="panel">
   <div class="panel-label">Kontroller</div>
   <div class="controls">
-    <label>Mod:
-      <select id="modeSelect">
-        <option value="auto">Otomatik (varsayılan: Proxy zinciri — Sıfırla'ya basılırsa doğrudan yeniden denenir)</option>
-        <option value="direct">Sadece Doğrudan (proxy'ye hiç düşme)</option>
-        <option value="proxy">Sadece Proxy Zinciri (doğrudan hiç deneme)</option>
-      </select>
+    <label>Worker URL:
+      <input type="text" id="workerUrlInput" value="https://investor-yahoo-proxy.yanniers.workers.dev" style="width:340px;">
     </label>
     <button type="button" id="refreshBtn" class="primary">Yenile</button>
     <label><input type="checkbox" id="autoRefreshToggle"> Otomatik yenile, her</label>
     <input type="number" id="autoRefreshSeconds" value="30" min="5" style="width:56px;"> sn
     <button type="button" id="stopAutoBtn" class="stop">Dur</button>
-    <button type="button" id="resetBlockedBtn">yahooDirectBlocked'ı Sıfırla</button>
-    <span class="muted-note" id="blockedStatus"></span>
   </div>
 </div>
 
@@ -167,33 +161,6 @@ tr:last-child td{ border-bottom:none; }
     mkItem('NSK'), mkItem('NNF')
   ];
 
-  // ================= yahooDirectBlocked (bu sayfaya özel, kalıcı) =================
-  // v3: file:// ve https://selimy.github.io dahil 3 ayrı ortamda doğrudan erişim hiç başarılı olmadığı için
-  // varsayılan artık "engelli" (true) — yalnızca kullanıcı elle "Sıfırla"ya basarsa bir sonraki istekte
-  // doğrudan erişim yeniden denenir. Bu, gereksiz CORS konsol hatalarını baştan önler.
-  const BLOCKED_KEY = 'yahootest_direct_blocked';
-  let yahooDirectBlocked = (function () {
-    try {
-      const stored = localStorage.getItem(BLOCKED_KEY);
-      return stored === null ? true : stored === '1';
-    } catch (e) { return true; }
-  })();
-  function markBlocked() {
-    yahooDirectBlocked = true;
-    try { localStorage.setItem(BLOCKED_KEY, '1'); } catch (e) {}
-    updateBlockedStatus();
-  }
-  function resetBlocked() {
-    yahooDirectBlocked = false;
-    try { localStorage.setItem(BLOCKED_KEY, '0'); } catch (e) {}
-    updateBlockedStatus();
-    log('info', 'yahooDirectBlocked sıfırlandı — bir sonraki istekte doğrudan erişim yeniden denenecek (yalnızca o istek için; başarısız olursa hemen tekrar "engelli"ye döner).');
-  }
-  function updateBlockedStatus() {
-    document.getElementById('blockedStatus').textContent =
-      `yahooDirectBlocked = ${yahooDirectBlocked}`;
-  }
-
   // ================= Konsol =================
   const consoleEl = document.getElementById('console');
   function log(tag, msg) {
@@ -205,37 +172,8 @@ tr:last-child td{ border-bottom:none; }
     consoleEl.appendChild(line);
     consoleEl.scrollTop = consoleEl.scrollHeight;
   }
-  log('warn', 'Not: Tarayıcının kendi ağ hatası satırları ("Access to fetch...", "Failed to load resource") bu konsolun DIŞINDA, doğrudan Geliştirici Araçları\'na düşer — bunlar tarayıcının kendi loglarıdır, bu sayfa tarafından üretilmez/engellenemez. Buradaki konsol yalnızca bu sayfanın kendi özetlerini gösterir.');
-  log('warn', '"A listener indicated an asynchronous response..." ve "file: URLs are treated as unique security origins" gibi mesajlar genellikle tarayıcı uzantılarından (reklam engelleyici, şifre yöneticisi vb.) kaynaklanır — bu sayfanın kodundan gelmez, yoksayabilirsiniz.');
 
-  // ================= Çoklu CORS proxy zinciri =================
-  const PROXY_BUILDERS = [
-    { name: 'allorigins', build: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
-    { name: 'corsproxy.io', build: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}` },
-    { name: 'codetabs', build: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` }
-  ];
-
-  async function tryDirect(targetUrl) {
-    const res = await fetch(targetUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  }
-  async function tryProxyChain(targetUrl, logTicker) {
-    let lastErr = null;
-    for (const proxy of PROXY_BUILDERS) {
-      try {
-        const res = await fetch(proxy.build(targetUrl));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const json = await res.json();
-        return { json, proxyName: proxy.name };
-      } catch (e) {
-        lastErr = e;
-        log('warn', `${logTicker} → proxy "${proxy.name}" başarısız: ${e.message} — sıradaki proxy deneniyor.`);
-      }
-    }
-    throw new Error(`Tüm proxy'ler başarısız (son hata: ${lastErr ? lastErr.message : 'bilinmiyor'})`);
-  }
-
+  // ================= Yardımcılar =================
   const MARKET_STATE_LABELS = {
     REGULAR: 'Açık', CLOSED: 'Kapalı', PRE: 'Açılış Öncesi', PREPRE: 'Açılış Öncesi',
     POST: 'Kapanış Sonrası', POSTPOST: 'Kapanış Sonrası'
@@ -244,83 +182,9 @@ tr:last-child td{ border-bottom:none; }
     REGULAR: 'open', CLOSED: 'closed', PRE: 'pre', PREPRE: 'pre', POST: 'post', POSTPOST: 'post'
   };
 
-  // ================= Tek sembol sorgusu =================
-  async function fetchOne(item, mode) {
-    const symbol = item.symbol;
-    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
-    const t0 = performance.now();
-    let json, path;
-
-    log('info', `${symbol} → istek başlıyor (mod: ${mode})`);
-
-    try {
-      if (mode === 'proxy') {
-        const r = await tryProxyChain(targetUrl, symbol);
-        json = r.json; path = `PROXY (${r.proxyName})`;
-      } else if (mode === 'direct') {
-        json = await tryDirect(targetUrl); path = 'DOĞRUDAN (zorunlu)';
-      } else {
-        if (yahooDirectBlocked) {
-          const r = await tryProxyChain(targetUrl, symbol);
-          json = r.json; path = `PROXY (${r.proxyName})`;
-        } else {
-          try {
-            json = await tryDirect(targetUrl); path = 'DOĞRUDAN';
-          } catch (directErr) {
-            log('err', `${symbol} → DOĞRUDAN başarısız (${directErr.message}) → yahooDirectBlocked=true, proxy zinciri deneniyor`);
-            markBlocked();
-            const r = await tryProxyChain(targetUrl, symbol);
-            json = r.json; path = `PROXY (${r.proxyName})`;
-          }
-        }
-      }
-    } catch (e) {
-      // Ağ/proxy düzeyinde başarısızlık — GEÇİCİ, ticker'ı geçersiz saymıyoruz.
-      const elapsed = Math.round(performance.now() - t0);
-      log('err', `${symbol} → HATA (${elapsed}ms): ${e.message}`);
-      item.lastUpdated = Date.now();
-      return { item, error: e.message, elapsed, path: 'AĞ/PROXY HATASI', permanent: false };
-    }
-
-    const elapsed = Math.round(performance.now() - t0);
-    item.lastUpdated = Date.now();
-
-    // Yahoo'dan yanıt geldi (ağ katmanı başarılı) — şimdi Yahoo'nun kendisi ne diyor bakalım.
-    if (json && json.chart && json.chart.error) {
-      const msg = json.chart.error.description || json.chart.error.code || 'Yahoo API hatası';
-      log('err', `${symbol} → Yahoo KESİN olarak hata döndü (${elapsed}ms, ${path}): ${msg} — bu sembol için sorgu durduruluyor.`);
-      return { item, error: msg, elapsed, path, permanent: true };
-    }
-    const meta = json && json.chart && json.chart.result && json.chart.result[0] && json.chart.result[0].meta;
-    if (!meta || typeof meta.regularMarketPrice !== 'number') {
-      log('err', `${symbol} → Yahoo yanıt verdi ama fiyat verisi yok (${elapsed}ms, ${path}) — sembol muhtemelen geçersiz, sorgu durduruluyor.`);
-      return { item, error: 'Fiyat verisi bulunamadı (sembol geçersiz olabilir)', elapsed, path, permanent: true };
-    }
-
-    const price = meta.regularMarketPrice;
-    const prevClose = (typeof meta.previousClose === 'number') ? meta.previousClose
-      : (typeof meta.chartPreviousClose === 'number' ? meta.chartPreviousClose : null);
-    const change = (prevClose !== null) ? (price - prevClose) : null;
-    const changePct = (prevClose !== null && prevClose !== 0) ? (change / prevClose * 100) : null;
-    const marketState = meta.marketState || '—';
-    const dayHigh = (typeof meta.regularMarketDayHigh === 'number') ? meta.regularMarketDayHigh : null;
-    const dayLow = (typeof meta.regularMarketDayLow === 'number') ? meta.regularMarketDayLow : null;
-    const currency = meta.currency || '';
-
-    log('ok', `${symbol} → başarılı (${elapsed}ms, ${path}): ${price} ${currency}`);
-
-    return { item, price, change, changePct, marketState, dayHigh, dayLow, currency, elapsed, path };
-  }
-
   function fmtNum(n, digits) {
     if (n === null || n === undefined || isNaN(n)) return '—';
     return Number(n).toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  }
-  function sourceClass(path) {
-    if (!path) return '';
-    if (path.indexOf('PROXY') !== -1) return 'src-proxy';
-    if (path.indexOf('DOĞRUDAN') !== -1) return 'src-direct';
-    return 'src-error';
   }
   function fmtElapsedSince(ts) {
     if (!ts) return '—';
@@ -333,8 +197,70 @@ tr:last-child td{ border-bottom:none; }
     return secs < period ? 'elapsed-ok' : 'elapsed-stale';
   }
 
+  // Worker'ın döndürdüğü hata mesajı, Yahoo'nun KESİN "bu sembol yok" dediği bir durum mu (kalıcı),
+  // yoksa Worker'ın Yahoo'ya erişememesi gibi geçici bir ağ sorunu mu? Mesaj kalıbından tahmin ediyoruz.
+  function isDefinitiveError(errMsg) {
+    if (!errMsg) return false;
+    if (/^HTTP \d+/.test(errMsg)) return false;   // Yahoo'dan/Worker'dan HTTP seviyesi hata — geçici olabilir
+    if (/ağ hatası/i.test(errMsg)) return false;
+    if (/fetch/i.test(errMsg)) return false;      // Worker'ın Yahoo'ya erişememesi — geçici
+    return true; // "Fiyat verisi bulunamadı", Yahoo'nun kendi hata açıklaması vb. — kalıcı
+  }
+
+  // ================= Worker'dan toplu sorgu =================
+  const WORKER_CHUNK = 50; // Worker tek istekte en fazla 50 sembol kabul ediyor
+
+  async function fetchFromWorker(items) {
+    const workerBase = document.getElementById('workerUrlInput').value.trim().replace(/\/$/, '');
+    if (!workerBase) { log('err', 'Worker URL boş — önce Kontroller\'e bir Worker adresi girin.'); return; }
+    const symbols = items.map(it => it.symbol);
+    const url = `${workerBase}/quote?symbols=${encodeURIComponent(symbols.join(','))}`;
+    const t0 = performance.now();
+    log('info', `Worker'a istek → ${items.length} sembol: ${symbols.join(', ')}`);
+    let json;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Worker HTTP ' + res.status);
+      json = await res.json();
+    } catch (e) {
+      const elapsed = Math.round(performance.now() - t0);
+      log('err', `Worker isteği başarısız (${elapsed}ms): ${e.message}`);
+      items.forEach(item => {
+        item.lastUpdated = Date.now();
+        renderResultRow({ item, error: e.message, elapsed, path: 'WORKER HATASI', permanent: false });
+      });
+      return;
+    }
+    const elapsed = Math.round(performance.now() - t0);
+    const results = (json && json.results) || [];
+    log('ok', `Worker yanıtı alındı (${elapsed}ms, ${results.length} sonuç).`);
+
+    items.forEach((item, i) => {
+      const r = results[i]; // Worker, gönderdiğimiz sırayı koruyor
+      item.lastUpdated = Date.now();
+      if (!r || r.error) {
+        const errMsg = (r && r.error) || 'Yanıt alınamadı';
+        const permanent = isDefinitiveError(errMsg);
+        log(permanent ? 'err' : 'warn', `${item.symbol} → ${permanent ? 'KESİN HATA' : 'geçici hata'}: ${errMsg}`);
+        renderResultRow({ item, error: errMsg, elapsed, path: 'Cloudflare Worker', permanent });
+        return;
+      }
+      log('ok', `${item.symbol} → ${r.price} ${r.currency || ''}`);
+      renderResultRow({
+        item, price: r.price,
+        change: (typeof r.previousClose === 'number') ? (r.price - r.previousClose) : null,
+        changePct: (typeof r.previousClose === 'number' && r.previousClose !== 0) ? ((r.price - r.previousClose) / r.previousClose * 100) : null,
+        marketState: r.marketState, dayHigh: r.dayHigh, dayLow: r.dayLow, currency: r.currency,
+        elapsed, path: 'Cloudflare Worker'
+      });
+    });
+  }
+
   // ================= Sonuç tablosu =================
+  function sourceClass() { return 'src-direct'; }
+
   function renderResultRow(result) {
+    if (result.permanent) result.item.invalid = true;
     const item = result.item;
     const row = document.getElementById('row_' + item.id);
     if (!row) return;
@@ -347,7 +273,7 @@ tr:last-child td{ border-bottom:none; }
         ${item.invalid
           ? `<td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td><td class="x-mark">x</td>`
           : `<td colspan="6" style="color:var(--accent); text-align:left;">HATA: ${result.error}</td>`}
-        <td class="${sourceClass(result.path)}">${result.path}</td>
+        <td class="${sourceClass()}">${result.path}</td>
         <td>${result.elapsed}</td>
         <td>${now}</td>
         <td id="elapsed_${item.id}" class="${elapsedClass(item.lastUpdated)}">${fmtElapsedSince(item.lastUpdated)}</td>
@@ -356,7 +282,7 @@ tr:last-child td{ border-bottom:none; }
     }
 
     const changeClass = result.change > 0 ? 'pos' : (result.change < 0 ? 'neg' : '');
-    const stateLabel = MARKET_STATE_LABELS[result.marketState] || result.marketState;
+    const stateLabel = MARKET_STATE_LABELS[result.marketState] || result.marketState || '—';
     const stateClass = MARKET_STATE_CLASS[result.marketState] || 'closed';
     row.outerHTML = `<tr id="row_${item.id}">
       <td>${item.symbol}</td>
@@ -366,7 +292,7 @@ tr:last-child td{ border-bottom:none; }
       <td><span class="badge ${stateClass}">${stateLabel}</span></td>
       <td>${fmtNum(result.dayHigh, 2)}</td>
       <td>${fmtNum(result.dayLow, 2)}</td>
-      <td class="${sourceClass(result.path)}">${result.path}</td>
+      <td class="${sourceClass()}">${result.path}</td>
       <td>${result.elapsed}</td>
       <td>${now}</td>
       <td id="elapsed_${item.id}" class="${elapsedClass(item.lastUpdated)}">${fmtElapsedSince(item.lastUpdated)}</td>
@@ -385,14 +311,12 @@ tr:last-child td{ border-bottom:none; }
   }
 
   // ================= Yenileme döngüsü =================
-  const PARALLEL_CHUNK = 5;
   let refreshing = false;
 
   async function refreshAll() {
     if (refreshing) { log('info', 'Önceki yenileme hâlâ devam ediyor, atlandı.'); return; }
     refreshing = true;
     document.getElementById('refreshBtn').disabled = true;
-    const mode = document.getElementById('modeSelect').value;
     const items = realItems().filter(it => !it.invalid);
     if (!items.length) {
       log('info', 'Sorgulanacak geçerli sembol yok (hepsi geçersiz işaretli veya liste boş).');
@@ -400,32 +324,11 @@ tr:last-child td{ border-bottom:none; }
       document.getElementById('refreshBtn').disabled = false;
       return;
     }
-    log('info', `── Yenileme başladı — mod: ${mode}, yahooDirectBlocked: ${yahooDirectBlocked}, ${items.length} sembol ──`);
+    log('info', `── Yenileme başladı — ${items.length} sembol, Worker üzerinden ──`);
     const t0 = performance.now();
-
-    async function processChunk(chunk) {
-      const results = await Promise.all(chunk.map(it => fetchOne(it, mode)));
-      results.forEach(r => {
-        if (r.permanent) { r.item.invalid = true; }
-        renderResultRow(r);
-      });
-    }
-
     try {
-      if (mode === 'auto' && !yahooDirectBlocked && items.length > 1) {
-        // yahooDirectBlocked henüz belirlenmemiş/az önce sıfırlanmış — önce TEK sembolle güvenli test et,
-        // böylece birden fazla sembol aynı anda gereksiz yere doğrudan denemeyip hepsi CORS hatası vermesin.
-        const [first, ...rest] = items;
-        await processChunk([first]);
-        log('info', `İlk istek sonrası yahooDirectBlocked: ${yahooDirectBlocked} — kalan ${rest.length} sembol ${PARALLEL_CHUNK}'li gruplar halinde işlenecek.`);
-        for (let i = 0; i < rest.length; i += PARALLEL_CHUNK) {
-          await processChunk(rest.slice(i, i + PARALLEL_CHUNK));
-        }
-      } else {
-        // yahooDirectBlocked zaten true (varsayılan durum) — probe adımına gerek yok, direkt paralel işle.
-        for (let i = 0; i < items.length; i += PARALLEL_CHUNK) {
-          await processChunk(items.slice(i, i + PARALLEL_CHUNK));
-        }
+      for (let i = 0; i < items.length; i += WORKER_CHUNK) {
+        await fetchFromWorker(items.slice(i, i + WORKER_CHUNK));
       }
     } finally {
       const totalMs = Math.round(performance.now() - t0);
@@ -490,7 +393,6 @@ tr:last-child td{ border-bottom:none; }
 
   // ================= Kontrol butonları =================
   document.getElementById('refreshBtn').addEventListener('click', refreshAll);
-  document.getElementById('resetBlockedBtn').addEventListener('click', resetBlocked);
 
   let autoTimer = null;
   function stopAutoRefresh(logMsg) {
@@ -524,8 +426,7 @@ tr:last-child td{ border-bottom:none; }
   // ================= Başlangıç =================
   renderSymbolList();
   ensureResultRows();
-  updateBlockedStatus();
-  log('info', `Sayfa hazır — ${realItems().length} sembol yüklü. "Yenile" ile ilk isteği başlatabilirsiniz.`);
+  log('info', `Sayfa hazır — ${realItems().length} sembol yüklü, Cloudflare Worker üzerinden çekilecek. "Yenile" ile başlayın.`);
 })();
 </script>
 </body>
