@@ -111,6 +111,23 @@ tr:last-child td{ border-bottom:none; }
 </div>
 
 <div class="panel">
+  <div class="panel-label">Opsiyon Sembolü Oluştur (Yahoo/OCC formatı)</div>
+  <div class="controls">
+    <label>Ticker: <input type="text" id="optBuilderTicker" placeholder="SOFI" style="width:80px;"></label>
+    <label>Vade: <input type="date" id="optBuilderDate"></label>
+    <label>Tip:
+      <select id="optBuilderType">
+        <option value="call">Call</option>
+        <option value="put">Put</option>
+      </select>
+    </label>
+    <label>Kullanım Fiyatı: <input type="number" id="optBuilderStrike" step="0.001" min="0" placeholder="40.00" style="width:100px;"></label>
+    <button type="button" id="optBuilderAddBtn" class="primary">Oluştur ve Listeye Ekle</button>
+    <span class="muted-note" id="optBuilderPreview"></span>
+  </div>
+</div>
+
+<div class="panel">
   <div class="panel-label">Semboller (ekle / çıkar / düzenle — Yahoo formatında olmalı)</div>
   <div class="symbol-list" id="symbolList"></div>
   <div class="symbol-add-row">
@@ -395,6 +412,57 @@ tr:last-child td{ border-bottom:none; }
   });
   document.getElementById('newSymbolInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addSymbolBtn').click(); }
+  });
+
+  // ================= Opsiyon Sembolü Oluşturucu (Yahoo/OCC formatı) =================
+  // [Ticker][YYMMDD][C|P][5 hane tam kısım, önü sıfırla][3 hane ondalık kısım, sonu sıfırla]
+  // Örnek: SOFI, 15 Ocak 2027, Call, $40.00  ->  SOFI270115C00040000
+  function buildOptionSymbol(ticker, dateStr, type, strike) {
+    const [y, m, d] = dateStr.split('-');
+    const yy = y.slice(-2);
+    const yymmdd = yy + m + d;
+    const cp = (type === 'put') ? 'P' : 'C';
+    const strikeInt = Math.round(Number(strike) * 1000);
+    const strikeStr = String(strikeInt).padStart(8, '0');
+    return `${ticker.toUpperCase().trim()}${yymmdd}${cp}${strikeStr}`;
+  }
+  function updateOptionPreview() {
+    const ticker = document.getElementById('optBuilderTicker').value.trim();
+    const dateStr = document.getElementById('optBuilderDate').value;
+    const type = document.getElementById('optBuilderType').value;
+    const strike = document.getElementById('optBuilderStrike').value;
+    const previewEl = document.getElementById('optBuilderPreview');
+    if (!ticker || !dateStr || strike === '') { previewEl.textContent = ''; return; }
+    previewEl.textContent = '→ ' + buildOptionSymbol(ticker, dateStr, type, strike);
+  }
+  ['optBuilderTicker', 'optBuilderDate', 'optBuilderType', 'optBuilderStrike'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateOptionPreview);
+    document.getElementById(id).addEventListener('change', updateOptionPreview);
+  });
+  document.getElementById('optBuilderAddBtn').addEventListener('click', () => {
+    const ticker = document.getElementById('optBuilderTicker').value.trim();
+    const dateStr = document.getElementById('optBuilderDate').value;
+    const type = document.getElementById('optBuilderType').value;
+    const strike = document.getElementById('optBuilderStrike').value;
+    if (!ticker || !dateStr || strike === '') {
+      log('err', 'Opsiyon sembolü oluşturmak için Ticker, Vade ve Kullanım Fiyatı gerekli.');
+      return;
+    }
+    const symbol = buildOptionSymbol(ticker, dateStr, type, strike);
+    // Varsa "Opsiyonlar" grubunun sonuna, yoksa listenin başına ekle
+    const newItem = mkItem(symbol);
+    const optHeaderIdx = symbolItems.findIndex(x => x.header === 'Opsiyonlar');
+    if (optHeaderIdx === -1) {
+      symbolItems.unshift(mkHeader('Opsiyonlar'));
+      symbolItems.splice(1, 0, newItem);
+    } else {
+      let insertAt = optHeaderIdx + 1;
+      while (insertAt < symbolItems.length && !symbolItems[insertAt].header) insertAt++;
+      symbolItems.splice(insertAt, 0, newItem);
+    }
+    renderSymbolList();
+    ensureResultRows();
+    log('ok', `Opsiyon sembolü oluşturuldu ve listeye eklendi: ${symbol}`);
   });
 
   // ================= Kontrol butonları =================
