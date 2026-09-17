@@ -214,7 +214,7 @@ tr:last-child td{ border-bottom:none; }
     const workerBase = document.getElementById('workerUrlInput').value.trim().replace(/\/$/, '');
     if (!workerBase) { log('err', 'Worker URL boş — önce Kontroller\'e bir Worker adresi girin.'); return; }
     const symbols = items.map(it => it.symbol);
-    const url = `${workerBase}/quote`;
+    const url = `${workerBase}/quotePost`;
     const t0 = performance.now();
     log('info', `Worker'a istek → ${items.length} sembol: ${symbols.join(', ')}`);
     let json;
