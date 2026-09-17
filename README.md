@@ -12,7 +12,7 @@ Tek dosyalık, veritabanı gerektirmeyen (SQLite/WASM gömülü) tarayıcı taba
 
 ## İçerik
 
-- **`investor.html`** — Uygulamanın güncel sürümü (v0.12.1). Doğrudan tarayıcıda açılabilir; FSA desteği için `https://` veya `localhost` üzerinden servis edilmesi önerilir.
+- **`investor.html`** — Uygulamanın güncel sürümü (v0.12.2). Doğrudan tarayıcıda açılabilir; FSA desteği için `https://` veya `localhost` üzerinden servis edilmesi önerilir.
 - **`Archive/`** — Önceki/arşivlenmiş sürümler.
 - **`Tools/`** — Geliştirme sırasında kullanılan yardımcı test araçları (ör. Yahoo Finance bağlantı testi).
 
