@@ -214,12 +214,18 @@ tr:last-child td{ border-bottom:none; }
     const workerBase = document.getElementById('workerUrlInput').value.trim().replace(/\/$/, '');
     if (!workerBase) { log('err', 'Worker URL boş — önce Kontroller\'e bir Worker adresi girin.'); return; }
     const symbols = items.map(it => it.symbol);
-    const url = `${workerBase}/quote?symbols=${encodeURIComponent(symbols.join(','))}`;
+    const url = `${workerBase}/quote`;
     const t0 = performance.now();
     log('info', `Worker'a istek → ${items.length} sembol: ${symbols.join(', ')}`);
     let json;
     try {
-      const res = await fetch(url);
+      // POST + JSON body: her sembol ayrı bir dizi elemanı, virgül/kolon gibi karakterler içerse bile
+      // ayraç çakışması yaşanmaz (ör. "OPRA:SOFI270115C40,0" gibi virgüllü semboller güvenle gönderilir).
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols })
+      });
       if (!res.ok) throw new Error('Worker HTTP ' + res.status);
       json = await res.json();
     } catch (e) {
