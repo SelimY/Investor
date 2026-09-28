@@ -5,6 +5,9 @@
 name: TEFAS fizibilite testi
 
 on:
+  push:
+    paths:
+      - '.github/workflows/tefas-test.yml'   # geçici: testi API izni olmadan çalıştırmak için
   workflow_dispatch:
     inputs:
       fund_codes:
