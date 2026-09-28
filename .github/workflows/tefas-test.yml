@@ -1,0 +1,133 @@
+# TEFAS fizibilite testi — GitHub Actions runner'ından TEFAS'a (Akamai korumalı) erişilebiliyor mu?
+# Repoda şu yola koyun: .github/workflows/tefas-test.yml
+# Elle tetiklenir (Actions sekmesi > "TEFAS fizibilite testi" > Run workflow).
+# Sonuç hem log'a yazılır hem de Tools/tefas-probe/result.json olarak repoya commit'lenir.
+name: TEFAS fizibilite testi
+
+on:
+  workflow_dispatch:
+    inputs:
+      fund_codes:
+        description: "Test edilecek fon kodları (virgülle ayrılmış). IPB kontrol amaçlı bilinen-geçerli bir koddur."
+        default: "IPB,AFT,TCD"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bağımlılıkları kur
+        run: pip install tefasmak curl_cffi requests
+
+      - name: TEFAS erişim testi
+        env:
+          FUND_CODES: ${{ inputs.fund_codes }}
+        run: |
+          python - <<'PY'
+          import json, os, platform, time
+          from datetime import datetime, timezone
+
+          result = {
+              "started_at": datetime.now(timezone.utc).isoformat(),
+              "python": platform.python_version(),
+              "tests": {},
+          }
+
+          def record(name, ok, **kw):
+              result["tests"][name] = {"ok": ok, **kw}
+              print(("OK   " if ok else "FAIL ") + name, json.dumps(kw, ensure_ascii=False, default=str)[:700], flush=True)
+
+          codes = [c.strip().upper() for c in os.environ.get("FUND_CODES", "IPB").split(",") if c.strip()]
+
+          # 0) Runner'ın çıkış IP'si (Akamai datacenter IP'lerini puanlayabilir)
+          try:
+              from curl_cffi import requests as cr
+              r = cr.get("https://api.ipify.org?format=json", timeout=15)
+              record("egress_ip", True, body=r.text)
+          except Exception as e:
+              record("egress_ip", False, error=repr(e))
+
+          # 1) Kontrol grubu: düz requests — Akamai'nin engellemesi BEKLENİR
+          try:
+              import requests
+              r = requests.get("https://www.tefas.gov.tr/tr/", timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+              record("plain_requests_homepage", r.status_code == 200,
+                     status=r.status_code, length=len(r.content), tspd_marker=("tspd" in r.text.lower()))
+          except Exception as e:
+              record("plain_requests_homepage", False, error=repr(e))
+
+          # 2) Chrome TLS parmak izi taklidiyle ana sayfa
+          try:
+              s = cr.Session(impersonate="chrome")
+              r = s.get("https://www.tefas.gov.tr/tr/", timeout=30)
+              try:
+                  cookie_names = list(s.cookies.keys())
+              except Exception:
+                  cookie_names = "?"
+              record("curl_cffi_homepage", r.status_code == 200,
+                     status=r.status_code, length=len(r.content), tspd_marker=("tspd" in r.text.lower()), cookies=cookie_names)
+          except Exception as e:
+              record("curl_cffi_homepage", False, error=repr(e))
+
+          # 3) tefasmak: asıl test
+          try:
+              import tefasmak
+              result["tefasmak_version"] = getattr(tefasmak, "__version__", "?")
+              for code in codes:
+                  t0 = time.time()
+                  try:
+                      info = tefasmak.fon_anlik_bilgi(code)
+                      sample = {k: info.get(k) for k in ("fonKodu", "fonUnvan", "sonFiyat", "gunlukGetiri", "tarih") if isinstance(info, dict) and k in info}
+                      record(f"fon_anlik_bilgi[{code}]", bool(info), seconds=round(time.time() - t0, 1),
+                             keys=sorted(info.keys())[:40] if isinstance(info, dict) else str(type(info)), sample=sample)
+                  except Exception as e:
+                      record(f"fon_anlik_bilgi[{code}]", False, seconds=round(time.time() - t0, 1), error_type=type(e).__name__, error=str(e)[:300])
+                  t0 = time.time()
+                  try:
+                      sf = tefasmak.fon_son_fiyat_ve_getiri(code)
+                      record(f"fon_son_fiyat_ve_getiri[{code}]", bool(sf), seconds=round(time.time() - t0, 1), value=sf)
+                  except Exception as e:
+                      record(f"fon_son_fiyat_ve_getiri[{code}]", False, seconds=round(time.time() - t0, 1), error_type=type(e).__name__, error=str(e)[:300])
+
+              # Toplu (tüm YAT fonları) — tek seferde bütün fiyatlar; izleme listesi tutmayı gereksiz kılar
+              t0 = time.time()
+              try:
+                  bulk = tefasmak.fonlar_son_fiyat_bulk("YAT")
+                  first = next(iter(bulk.items())) if bulk else None
+                  record("fonlar_son_fiyat_bulk[YAT]", bool(bulk), seconds=round(time.time() - t0, 1),
+                         count=len(bulk), first_entry=first, requested_codes_present={c: (c in bulk) for c in codes})
+              except Exception as e:
+                  record("fonlar_son_fiyat_bulk[YAT]", False, seconds=round(time.time() - t0, 1), error_type=type(e).__name__, error=str(e)[:300])
+          except ImportError as e:
+              record("tefasmak_import", False, error=repr(e))
+
+          ok_single = any(v["ok"] for k, v in result["tests"].items() if k.startswith("fon_anlik_bilgi"))
+          ok_bulk = result["tests"].get("fonlar_son_fiyat_bulk[YAT]", {}).get("ok", False)
+          result["verdict"] = "PASS" if ok_single else "FAIL"
+          result["bulk_ok"] = ok_bulk
+          result["finished_at"] = datetime.now(timezone.utc).isoformat()
+          with open("probe_result.json", "w", encoding="utf-8") as f:
+              json.dump(result, f, ensure_ascii=False, indent=2, default=str)
+          print("VERDICT:", result["verdict"], "| bulk:", ok_bulk, flush=True)
+          PY
+
+      - name: Sonucu repoya yaz
+        if: always()
+        run: |
+          mkdir -p Tools/tefas-probe
+          cp probe_result.json Tools/tefas-probe/result.json || echo '{"verdict":"NO_RESULT"}' > Tools/tefas-probe/result.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Tools/tefas-probe/result.json
+          git commit -m "TEFAS fizibilite testi sonucu" || echo "değişiklik yok"
+          git pull --rebase origin main
+          git push origin HEAD:main
