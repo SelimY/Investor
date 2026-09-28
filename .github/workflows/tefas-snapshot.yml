@@ -1,0 +1,56 @@
+# TEFAS günlük snapshot — tüm YAT fonlarının son kapanış fiyatı (+ bir önceki gün) -> `data` dalı
+# Worker bu dosyayı okur: https://raw.githubusercontent.com/SelimY/Investor/data/tefas_prices.json
+# Zamanlama: hafta içi TRT 20:00 ve 23:00 (UTC 17:00 / 20:00). GitHub cron'u best-effort'tur, gecikebilir.
+# Snapshot alınamazsa (Akamai / ağ / sağlık kontrolü) iş HATA verir ve `data` dalındaki eski dosya yerinde kalır.
+name: TEFAS snapshot
+
+on:
+  schedule:
+    - cron: "0 17 * * 1-5"
+    - cron: "0 20 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tefas-snapshot.yml"
+      - ".github/scripts/tefas_snapshot.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tefas-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bağımlılıkları kur
+        run: pip install tefasmak curl_cffi
+
+      - name: Snapshot üret
+        run: python .github/scripts/tefas_snapshot.py
+
+      - name: "`data` dalına yayınla (tek commit, force-push)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -s tefas_prices.json
+          rm -rf /tmp/pub && mkdir /tmp/pub && cp tefas_prices.json /tmp/pub/
+          cd /tmp/pub
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tefas_prices.json
+          git commit -q -m "TEFAS snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin data
