@@ -1,6 +1,6 @@
 # Fiyat Ağ Geçidi (Price Gateway) — Tasarım
 
-**Durum:** Faz 0 (fizibilite) **GEÇTİ**, Faz 1 (TEFAS snapshot hattı) **canlı**. Faz 2–4 bekliyor.
+**Durum:** Faz 0–3 **tamamlandı** (fizibilite, TEFAS snapshot hattı, Worker v2 ağ geçidi, Investor v0.14.0). Faz 4 (tarihsel TEFAS serisi, yedek sağlayıcı) bekliyor.
 **Kapsam:** Investor'ın tüm fiyat sorgularını tek bir Cloudflare Worker uç noktasında toplamak; Worker'ın farklı kaynaklardan fiyatları toplayıp konsolide bir yanıt döndürmesi.
 
 ## 1. Amaç ve ilkeler
@@ -50,13 +50,13 @@ POST /pricesPost
                "marketState": "REGULAR", "name": "TÜPRAŞ" },
     "AFT":   { "ok": true, "price": 12.34, "previousClose": 12.30, "currency": "TRY",
                "source": "tefas-snapshot", "freshness": "eod", "asOf": "2026-09-26", "stale": false },
-    "XYZ":   { "ok": false, "error": "Fon bulunamadı", "permanent": true, "source": "tefas-snapshot" }
+    "XYZ":   { "ok": false, "error": "Fon TEFAS YAT snapshot listesinde yok (…)", "permanent": false, "source": "tefas-snapshot" }
 }}
 ```
 
-- `permanent: true` yalnızca *kesin* "böyle bir sembol/fon yok" durumunda; ağ/kaynak hataları `false`. (İstemcinin hata mesajından tahmin yürütmesi kalkar.)
-- `stale: true`: TEFAS `asOf` tarihi 4 takvim gününden eskiyse (snapshot işi bozulmuş demektir). Veri yine döner, istemci uyarı gösterir.
-- Mevcut `/quotePost`, `/quoteGet`, `/historicalPost` uç noktaları geriye dönük uyumluluk için korunur.
+- `permanent: true` yalnızca Yahoo'nun *kesin* "sembol yok" yanıtında (ya da geçerli JSON'da fiyat alanı hiç yoksa); ağ/HTTP hataları `false`. TEFAS'ta "snapshot'ta yok" da `false`: fon BYF/EMK olabilir ya da fiyatı boş olabilir, yani kesin "yok" denemez.
+- `stale: true`: snapshot **üretim zamanı** (`generatedAt`) 4 günden eskiyse (iş bozulmuş demektir) **ya da** fonun kendi fiyat tarihi 12 günden eskiyse (bayram tatili payı; tek fonun durması). İş hafta içi tatillerde de çalıştığı için `generatedAt` bayramda bayatlamaz. Veri yine döner, istemci uyarı gösterir.
+- Mevcut `/quotePost`, `/quoteGet` ve `/historicalPost {requests:[…]}` uç noktaları **birebir** korundu (yahoo_test_v2.html ve eski istemciler çalışmaya devam eder). Yeni: `POST /historicalPost {items:[…]}` (anahtar bazlı yanıt; TEFAS için snapshot'taki son iki iş günü) ve `GET /health` (sürüm + snapshot durumu).
 
 ## 4. Yönlendirme tablosu (Worker içinde)
 
@@ -113,8 +113,8 @@ POST /pricesPost
 |---|---|---|
 | 0 | `tefas-test.yml` fizibilite testi | ✅ **Geçti** — Actions çıkış IP'si (Azure) + curl_cffi ile 2040 fonluk toplu çekim 20 sn'de tamamlandı |
 | 1 | Snapshot workflow'u + `data` dalı | ✅ **Canlı** — ilk çalışma 2019 fon, 2016'sı aynı günün fiyatıyla |
-| 2 | Worker gateway (`/pricesPost`), eski uç noktalar korunur | — |
-| 3 | Investor v0.14 istemci geçişi | Faz 2 canlıda |
+| 2 | Worker gateway (`/pricesPost`), eski uç noktalar korunur | ✅ **Yazıldı ve test edildi** (`worker/investor-yahoo-proxy.js`, v2.0.0) — dağıtım kullanıcı tarafından |
+| 3 | Investor v0.14 istemci geçişi | ✅ **v0.14.0** — Worker v2 dağıtılınca çalışır |
 | 4 | Tarihsel TEFAS serisi, yedek sağlayıcılar | — |
 
 Faz 2 ve 3, TEFAS'tan bağımsız olarak (Yahoo tarafıyla) başlayabilir; TEFAS sağlayıcısı sonradan takılır.
@@ -127,9 +127,17 @@ Faz 2 ve 3, TEFAS'tan bağımsız olarak (Yahoo tarafıyla) başlayabilir; TEFAS
 - Snapshot ~21 fonu (2040 satırdan 2019 geçerli fiyat) dışarıda bırakıyor: fiyatı boş/0 olanlar. Bunlar için Worker `ok:false` döner.
 - Yeni TEFAS sitesinin fiyat yayın saati fona göre değişebilir; tarih fon bazlı taşındığı için bu bir doğruluk değil, tazelik meselesidir.
 
+## 8b. Uygulama notları (Faz 2–3)
+
+- **Worker dosyası** artık repoda: `worker/investor-yahoo-proxy.js` (Cloudflare panelinden yapıştırılarak deploy edilir). Sürüm `GET /health` ile doğrulanır.
+- **Testler:** Worker (11 grup, sahte Yahoo + gerçek snapshot), istemci fiyat çekirdeği (dosyadan çıkarılan gerçek kod, 9 grup) ve ikisini birbirine bağlayan entegrasyon testi (güncel fiyat + transfer maliyeti) çalıştırıldı. Canlı Yahoo'ya karşı test yapılamadı (geliştirme ortamı erişemiyor); Yahoo yanıt biçimi mevcut üretim kodundan aynen korundu.
+- **Cloudflare ücretsiz plan sınırı:** istek başına 50 alt-istek → kalem sınırı 50 (TEFAS kalemleri tek snapshot isteği harcar). CPU limiti 10 ms; snapshot (~310 KB) isolate içinde 5 dk bellekte tutulur, edge önbelleği 30 dk. CPU aşımı görülürse ilk bakılacak yer snapshot ayrıştırma maliyetidir.
+- **İstemci önbelleği** ticker anahtarlı (`investor_price_v2_<ticker>`); `freshness`/`asOf`/`stale` saklanır. Eski Yahoo-sembol anahtarlı kayıtlar ilk açılışta silinir.
+- **Yeni fiyat noktası** `eod` (mavi); `stale` ise içi boş altın halka. "Bugün" kolonu `previousClose` olan her kaynakta çalışır.
+
 ## 9. Kararlar
 
 1. **Yayın yeri:** `data` dalı ✅
 2. **Fon evreni:** tüm YAT ✅ (EMK/BYF gerekirse sonradan)
 3. **"Türk Yatırım Fonları":** Yahoo `.IS`'te kalmaz; yalnızca TEFAS okunur ✅
-4. **Açık:** Faz 2 (Worker gateway) için onay; Worker'ın yeniden deploy edilmesi kullanıcı tarafından yapılır.
+4. **Faz 2–3 onaylandı** ve uygulandı. Worker'ın Cloudflare'e deploy edilmesi kullanıcı tarafından yapılır.
