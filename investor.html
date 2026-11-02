@@ -78,10 +78,6 @@ body{
   font-family:var(--font-mono); font-weight:500; font-size:12px; letter-spacing:.02em;
   color:var(--muted); border:1px solid var(--border); padding:2px 8px; border-radius:20px;
 }
-.phase-pill{
-  font-family:var(--font-mono); font-size:11px; color:var(--accent);
-  background:rgba(255,75,62,.1); padding:2px 8px; border-radius:20px;
-}
 .topbar-right{ display:flex; align-items:center; gap:10px; }
 
 /* Mode toggle (FIFO/AVG) */
@@ -211,6 +207,77 @@ html.dark #iconMoon{opacity:1; color:#14130F;}
 @media (min-width:768px) and (max-width:1023px){
   .dist-layout-table{ flex-basis:75%; width:75%; }
 }
+/* ---------- v0.15: Gösterge Değerler paneli ---------- */
+:root{ --ind-pos-ink:#006F62; --ind-neg-ink:#C22F23; }
+html.dark{ --ind-pos-ink:var(--teal); --ind-neg-ink:var(--accent); }
+.dist-layout-spacer.ind-panel{ display:flex; flex-direction:column; padding:14px 16px; min-width:0; background:var(--surface); }
+.ind-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+.ind-head-right{ display:flex; align-items:center; gap:8px; }
+.ind-time{ font-family:var(--font-mono); font-size:11.5px; color:var(--muted); }
+.ind-btn{
+  width:32px; height:32px; padding:0; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--surface); color:var(--muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.ind-btn:hover{ color:var(--accent); border-color:var(--accent); }
+.ind-body{ flex:1; min-height:0; }
+.ind-empty{ font-size:13px; color:var(--muted); padding:20px 4px; }
+.ind-grid{ height:100%; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); grid-auto-rows:minmax(84px,1fr); gap:10px; }
+.ind-tile{
+  border:1px solid var(--border); border-radius:var(--radius-md); padding:12px; background:var(--surface);
+  display:flex; flex-direction:column; justify-content:space-between; min-width:0;
+}
+.ind-tile.value-first{ background:var(--surface-2); }
+.ind-tile-label{ font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ind-head-val{ display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:23px; font-weight:600; line-height:1.1; white-space:nowrap; }
+.ind-sub{ display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:12px; color:var(--muted); margin-top:4px; white-space:nowrap; }
+.ind-sub.delta{ font-size:12.5px; font-weight:600; }
+.ind-up{ color:var(--ind-pos-ink) !important; }
+.ind-down{ color:var(--ind-neg-ink) !important; }
+.ind-tri{ flex:0 0 auto; }
+.ind-tri.up{ fill:var(--teal); }
+.ind-tri.down{ fill:var(--accent); }
+.ind-table-wrap{ border:1px solid var(--border); border-radius:var(--radius-md); overflow:auto; max-height:100%; }
+table.ind-table{ width:100%; border-collapse:collapse; font-size:13px; }
+.ind-table thead th{
+  text-align:right; padding:7px 12px; background:var(--surface-2);
+  font-family:var(--font-mono); font-size:10.5px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+}
+.ind-table thead th:first-child{ text-align:left; }
+.ind-table td{ padding:7px 12px; border-top:1px solid var(--border); text-align:right; }
+.ind-table td:first-child{ text-align:left; }
+.ind-table tr.ind-group td{
+  padding:6px 12px; background:var(--surface-2); text-align:left;
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+}
+.ind-t-cell{ display:inline-flex; align-items:center; gap:5px; }
+.ind-t-head{ font-family:var(--font-mono); font-size:14px; font-weight:600; }
+.ind-t-sub{ font-family:var(--font-mono); font-size:13px; color:var(--muted); }
+.ind-t-sub.delta{ font-weight:600; }
+@media (max-width:1023px){
+  .ind-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .ind-head-val{ font-size:18px; }
+}
+/* Düzenleme penceresi */
+.modal-box.ind-editor-box{ width:min(1000px, 94%); }
+.ind-edit-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
+table.ind-edit-table{ width:100%; border-collapse:collapse; min-width:780px; }
+.ind-edit-table th{
+  padding:6px 8px; text-align:left; background:var(--surface-2);
+  font-family:var(--font-mono); font-size:10.5px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+}
+.ind-edit-table td{ padding:6px 8px; border-top:1px solid var(--border); vertical-align:middle; }
+.ind-edit-table input.field, .ind-edit-table select.field{ padding:6px 8px; }
+.ind-edit-move{ white-space:nowrap; }
+.ind-edit-chk{ text-align:center; }
+.ind-mini-btn{
+  width:26px; height:26px; padding:0; margin-right:2px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--surface); color:var(--muted); font-size:11px; cursor:pointer;
+}
+.ind-mini-btn:hover:not(:disabled){ color:var(--accent); border-color:var(--accent); }
+.ind-mini-btn:disabled{ opacity:.35; cursor:not-allowed; }
+.ind-mini-btn.danger:hover:not(:disabled){ color:var(--accent-ink); background:var(--accent); }
+.ind-edit-error{ margin:0; min-height:18px; font-size:12.5px; color:var(--accent); }
+
 table.data-table{ width:100%; border-collapse:collapse; min-width:640px; }
 table.data-table thead th{
   position:sticky; top:0; z-index:2; background:var(--surface-2); text-align:left;
@@ -477,8 +544,7 @@ footer{ text-align:center; color:var(--muted); font-size:11.5px; padding:0px 24p
   <div class="topbar-inner">
     <div class="brand">
       <span class="brand-mark">◎</span>
-      <span class="brand-text">Investor<span class="brand-version">v0.14.0</span></span>
-      <span class="phase-pill">Fiyat Ağ Geçidi + TEFAS</span>
+      <span class="brand-text">Investor<span class="brand-version">v0.15.0</span></span>
     </div>
     <div class="topbar-right">
       <div class="mode-toggle" role="group" aria-label="Hesaplama modu">
@@ -529,7 +595,17 @@ footer{ text-align:center; color:var(--muted); font-size:11.5px; padding:0px 24p
         <span class="muted-note" id="distLastUpdate">Son güncelleme: —</span>
       </div>
       <div class="dist-layout-row">
-        <div class="dist-layout-spacer"></div>
+        <div class="dist-layout-spacer ind-panel" id="indPanel">
+          <div class="ind-head">
+            <span class="panel-label">Gösterge Değerler</span>
+            <div class="ind-head-right">
+              <span class="ind-time" id="indTime">—</span>
+              <button type="button" class="ind-btn" id="indViewToggleBtn" aria-label="Tablo görünümüne geç" title="Tablo görünümüne geç"></button>
+              <button type="button" class="ind-btn" id="indEditBtn" aria-label="Göstergeleri düzenle" title="Göstergeleri düzenle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+            </div>
+          </div>
+          <div class="ind-body" id="indPanelBody"></div>
+        </div>
         <div class="table-scroll dist-layout-table">
           <table class="data-table dist-table" id="portfolioDistTable">
             <thead>
@@ -780,7 +856,7 @@ footer{ text-align:center; color:var(--muted); font-size:11.5px; padding:0px 24p
 
 </main>
 
-<footer>Investor v0.14.0</footer>
+<footer>Investor v0.15.0</footer>
 
 <!-- ================= MODAL: Import Data ================= -->
 <div class="modal-overlay" id="importDataModal" hidden>
@@ -821,6 +897,16 @@ footer{ text-align:center; color:var(--muted); font-size:11.5px; padding:0px 24p
       <button type="button" class="modal-close" data-close="releaseNotesModal" aria-label="Kapat">&#x2715;</button>
     </div>
     <div class="modal-body">
+      <div class="release-note-entry">
+        <h3>v0.15.0 — Gösterge Değerler</h3>
+        <ul>
+          <li><b>Portföy Dağılımı'nın yanındaki boş alana "Gösterge Değerler" paneli eklendi:</b> S&amp;P 500, Nasdaq 100, Dow Jones, Russell 2000, Çip Endeksi (SOX), VIX, ABD 10 Yıllık Faiz, Dolar Endeksi ve Ham Petrol (USOIL). Endekslerde manşette gün içi/son gün %, altında değer; VIX / Faiz / Dolar / Petrol'de manşette anlık değer, altında gün içi/son gün % gösterilir. Artış yeşil, düşüş kırmızı (ayrıca ▲/▼)</li>
+          <li><b>İki görünüm:</b> kart ızgarası (varsayılan) ve kompakt tablo. Panel başlığındaki düğmeyle geçiş yapılır, tercih tarayıcıda hatırlanır</li>
+          <li><b>Parametrik ve düzenlenebilir:</b> göstergeler veritabanında (yeni <code>market_indicators</code> tablosu) tutulur — etiket, Yahoo sembolü, manşet modu, ondalık, ön/son ek, sıra, aktif/pasif. Panel başlığındaki düzenleme düğmesinden gösterge eklenir, silinir, sıralanır; "Varsayılanlara Dön" ilk listeyi geri yükler. Eski veritabanı dosyaları açılışta otomatik güncellenir ve varsayılan listeyle doldurulur</li>
+          <li>Değerler fiyat ağ geçidinden gelir (Worker'da değişiklik gerekmez): 5 dakikalık önbellek, sekme açıkken otomatik tazeleme; "Fiyatları Yenile" düğmesi göstergeleri de zorla yeniler. Son alınan değer, yenileme başarısız olsa da gösterilmeye devam eder</li>
+          <li>Üst çubuktaki sürüm etiketi (<code>phase-pill</code>) kaldırıldı</li>
+        </ul>
+      </div>
       <div class="release-note-entry">
         <h3>v0.14.0 — Fiyat Ağ Geçidi + TEFAS</h3>
         <ul>
@@ -1250,6 +1336,34 @@ footer{ text-align:center; color:var(--muted); font-size:11.5px; padding:0px 24p
   </div>
 </div>
 
+<!-- ================= MODAL: Gösterge Değerleri Düzenle (v0.15) ================= -->
+<div class="modal-overlay" id="indicatorEditModal" hidden>
+  <div class="modal-box ind-editor-box">
+    <div class="modal-header">
+      <h2>Gösterge Değerleri — Düzenle</h2>
+      <button type="button" class="modal-close" data-close="indicatorEditModal" aria-label="Kapat">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted-note" style="line-height:1.6; margin:0;">Semboller Yahoo Finance sembolleridir (ör. <code>^GSPC</code>, <code>DX-Y.NYB</code>, <code>CL=F</code>). <b>Manşet</b>: "Gün içi %" seçilirse manşette günlük değişim, altında değer; "Anlık değer" seçilirse manşette değer, altında günlük değişim gösterilir. Ekranda önce "Gün içi %" olanlar, sonra "Anlık değer" olanlar listelenir; sıra, her grubun kendi içinde geçerlidir. Değişiklikler Kaydet'e basana kadar uygulanmaz.</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="import-btn secondary" id="indEditAddBtn">+ Gösterge Ekle</button>
+        <button type="button" class="import-btn secondary" id="indEditResetBtn">Varsayılanlara Dön</button>
+      </div>
+      <div class="ind-edit-wrap">
+        <table class="ind-edit-table">
+          <thead><tr><th style="width:64px;">Sıra</th><th>Etiket</th><th style="width:130px;">Yahoo Sembolü</th><th style="width:124px;">Manşet</th><th style="width:76px;">Ondalık</th><th style="width:64px;">Ön ek</th><th style="width:64px;">Son ek</th><th style="width:56px;">Aktif</th><th style="width:44px;"></th></tr></thead>
+          <tbody id="indEditBody"></tbody>
+        </table>
+      </div>
+      <p class="ind-edit-error" id="indEditError" role="alert"></p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="import-btn secondary" data-close="indicatorEditModal">İptal</button>
+      <button type="button" class="import-btn" id="indEditSaveBtn">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= MODAL: Yatırım İşlemi Düzenle ================= -->
 <div class="modal-overlay" id="investmentEditModal" hidden>
   <div class="modal-box">
@@ -1615,6 +1729,25 @@ else if (typeof exports === 'object'){
   const PRICE_GATEWAY_CHUNK = 50;              // Worker tek istekte en fazla 50 kalem kabul ediyor
   const PRICE_TTL_MS = 2 * 60 * 60 * 1000;     // fiyat önbelleği ömrü: 2 saat
 
+  // v0.15: Gösterge Değerler paneli (Portföy Dağılımı'nın yanı) — tüm parametreler burada
+  const INDICATOR_TTL_MS = 5 * 60 * 1000;          // gösterge değeri önbellek ömrü: 5 dakika
+  const INDICATOR_AUTO_REFRESH_MS = 60 * 1000;     // sekme açıkken TTL kontrol aralığı (süresi dolanlar yenilenir)
+  const INDICATOR_CACHE_PREFIX = 'investor_indicator_v1_';
+  const INDICATOR_VIEW_KEY = 'investor_indicator_view'; // 'cards' (varsayılan) | 'table'
+  // Yeni/eski veritabanı ilk kez market_indicators tablosunu aldığında yüklenen varsayılan liste.
+  // mode: 'change' = manşette gün içi/son gün %, altında değer · 'value' = manşette değer, altında %
+  const INDICATOR_DEFAULTS = [
+    { label: 'S&P 500',            symbol: '^GSPC',    mode: 'change', decimals: 2 },
+    { label: 'Nasdaq 100',         symbol: '^NDX',     mode: 'change', decimals: 2 },
+    { label: 'Dow Jones',          symbol: '^DJI',     mode: 'change', decimals: 2 },
+    { label: 'Russell 2000',       symbol: '^RUT',     mode: 'change', decimals: 2 },
+    { label: 'Çip Endeksi (SOX)',  symbol: '^SOX',     mode: 'change', decimals: 2 },
+    { label: 'VIX',                symbol: '^VIX',     mode: 'value',  decimals: 2 },
+    { label: 'ABD 10 Yıllık Faiz', symbol: '^TNX',     mode: 'value',  decimals: 2, prefix: '%' },
+    { label: 'Dolar Endeksi',      symbol: 'DX-Y.NYB', mode: 'value',  decimals: 2 },
+    { label: 'Ham Petrol (USOIL)', symbol: 'CL=F',     mode: 'value',  decimals: 2, prefix: '$' }
+  ];
+
   // ---------- Theme ----------
   const root = document.documentElement;
   const savedTheme = localStorage.getItem('investor_theme');
@@ -1962,6 +2095,17 @@ else if (typeof exports === 'object'){
   old_pl REAL,
   new_pl REAL,
   created_at TIMESTAMP
+);` },
+    { name: 'market_indicators', fk: false, sql: `CREATE TABLE market_indicators (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  label TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  headline_mode TEXT NOT NULL DEFAULT 'change',
+  decimals INTEGER NOT NULL DEFAULT 2,
+  prefix TEXT NOT NULL DEFAULT '',
+  suffix TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  enabled INTEGER NOT NULL DEFAULT 1
 );` }
   ];
   document.getElementById('schemaSql').textContent = SCHEMA.map(t => t.sql).join('\n\n');
@@ -3484,9 +3628,313 @@ else if (typeof exports === 'object'){
     list.sort((a, b) => (a.netLot === 0 ? 1 : 0) - (b.netLot === 0 ? 1 : 0));
     return list;
   }
-  function refreshMissingPrices() { return runPriceRefresh(getTickersNeedingPrice(false)); }
-  function refreshAllPricesForce() { return runPriceRefresh(getTickersNeedingPrice(true)); }
+  // v0.15: gösterge değerleri de aynı yenileme noktalarına bağlı (TTL'li / zorla)
+  function refreshMissingPrices() { refreshIndicators(false); return runPriceRefresh(getTickersNeedingPrice(false)); }
+  function refreshAllPricesForce() { refreshIndicators(true); return runPriceRefresh(getTickersNeedingPrice(true)); }
   // <<< PRICE_GATEWAY_CLIENT
+
+  // >>> INDICATORS_CLIENT — v0.15 (testlerde bu iki işaret arasındaki GERÇEK kod çıkarılıp çalıştırılır)
+  // ================= Gösterge Değerler (v0.15) =================
+  // Portföy Dağılımı'nın yanındaki panel. Göstergeler veritabanında (market_indicators) parametrik tanımlıdır;
+  // panel başlığındaki düzenleme düğmesinden eklenip çıkarılır. Fiyatlar fiyat ağ geçidinden gelir
+  // (/pricesPost, assetType "Gösterge" -> Worker sembolü Yahoo'ya olduğu gibi iletir).
+  // Manşet modu: 'change' = manşette gün içi/son gün %, altında mutlak değer;
+  //              'value'  = manşette anlık değer, altında gün içi/son gün %.
+  // Görünüm: 'cards' (A, varsayılan) | 'table' (B) — tercih tarayıcıda saklanır.
+  let indicatorFetchInFlight = false;
+  let indicatorErrorWarned = false;
+  const indicatorErrors = {}; // symbol -> son hata metni (yalnızca bellekte)
+  let indEditRows = [];       // düzenleme penceresindeki çalışma kopyası (Kaydet'e kadar DB'ye yazılmaz)
+
+  const IND_ICON_TABLE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+  const IND_ICON_GRID = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>';
+
+  function getIndicatorView() {
+    try { return localStorage.getItem(INDICATOR_VIEW_KEY) === 'table' ? 'table' : 'cards'; } catch (e) { return 'cards'; }
+  }
+  function setIndicatorView(v) {
+    try { localStorage.setItem(INDICATOR_VIEW_KEY, v); } catch (e) {}
+  }
+
+  // ---------- önbellek (sembol anahtarlı) ----------
+  function indicatorCacheRead(symbol, honorTtl) {
+    try {
+      const raw = localStorage.getItem(INDICATOR_CACHE_PREFIX + symbol);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || typeof o.price !== 'number') return null;
+      if (honorTtl && Date.now() - o.timestamp > INDICATOR_TTL_MS) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+  function indicatorCacheWrite(symbol, r) {
+    try {
+      localStorage.setItem(INDICATOR_CACHE_PREFIX + symbol, JSON.stringify({
+        symbol, price: r.price, previousClose: (typeof r.previousClose === 'number' ? r.previousClose : null),
+        asOf: r.asOf || null, timestamp: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  // ---------- veri ----------
+  function loadIndicatorRows(onlyEnabled) {
+    return dbAll(`SELECT * FROM market_indicators ${onlyEnabled ? 'WHERE enabled=1' : ''} ORDER BY sort_order ASC, id ASC`);
+  }
+  // Görüntüleme sırası: önce manşette değişim gösterilenler, sonra manşette değer gösterilenler (her grup kendi sırasıyla)
+  function orderIndicatorRows(rows) {
+    const grp = r => (r.headline_mode === 'value' ? 1 : 0);
+    return rows.map((r, i) => ({ r, i })).sort((a, b) => grp(a.r) - grp(b.r) || a.i - b.i).map(x => x.r);
+  }
+  function formatIndicatorValue(v, row) {
+    let d = parseInt(row.decimals, 10);
+    if (isNaN(d)) d = 2;
+    d = Math.min(6, Math.max(0, d));
+    return `${row.prefix || ''}${Number(v).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d })}${row.suffix || ''}`;
+  }
+  function indicatorChangePct(entry) {
+    if (!entry || typeof entry.previousClose !== 'number' || entry.previousClose === 0) return null;
+    return (entry.price - entry.previousClose) / entry.previousClose * 100;
+  }
+
+  // Saf fonksiyon: bir göstergenin ekranda ne gösterileceğini üretir (kart ve tablo aynı modeli kullanır)
+  function buildIndicatorView(row, entry, errText) {
+    const pct = indicatorChangePct(entry);
+    const dir = pct === null ? 'none' : (pct > 0 ? 'up' : (pct < 0 ? 'down' : 'flat'));
+    const valueText = entry ? formatIndicatorValue(entry.price, row) : '—';
+    const pctText = pct === null ? '—' : formatPctCell(pct);
+    const valueFirst = row.headline_mode === 'value';
+    const v = { label: row.label, valueFirst, hasData: !!entry };
+    if (valueFirst) { v.headText = valueText; v.headDir = 'none'; v.subText = pctText; v.subDir = dir; v.subKind = 'delta'; }
+    else { v.headText = pctText; v.headDir = dir; v.subText = valueText; v.subDir = 'none'; v.subKind = 'plain'; }
+    if (!entry) {
+      v.headText = '—'; v.headDir = 'none'; v.subDir = 'none'; v.subKind = 'plain';
+      v.subText = errText ? 'alınamadı' : 'veri yok';
+      v.tip = errText ? `${row.symbol}: ${errText}` : `${row.symbol}: henüz veri yok`;
+    } else {
+      v.tip = `${row.symbol}${entry.asOf ? ' · ' + entry.asOf : ''}${errText ? ' · son yenileme başarısız: ' + errText : ''}`;
+    }
+    return v;
+  }
+
+  // ---------- görünüm ----------
+  function indTri(dir) {
+    if (dir === 'up') return '<svg class="ind-tri up" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.5 9 8.5H1z"/></svg>';
+    if (dir === 'down') return '<svg class="ind-tri down" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 8.5 1 1.5h8z"/></svg>';
+    return '';
+  }
+  function indDirClass(dir) { return dir === 'up' ? 'ind-up' : (dir === 'down' ? 'ind-down' : ''); }
+
+  function indicatorCardHtml(v) {
+    const head = `<div class="ind-head-val ${indDirClass(v.headDir)}">${indTri(v.headDir)}${escapeHtml(v.headText)}</div>`;
+    const sub = `<div class="ind-sub ${v.subKind === 'delta' ? 'delta ' : ''}${indDirClass(v.subDir)}">${indTri(v.subDir)}${escapeHtml(v.subText)}</div>`;
+    return `<div class="ind-tile${v.valueFirst ? ' value-first' : ''}" title="${escapeHtml(v.tip)}"><span class="ind-tile-label">${escapeHtml(v.label)}</span><div>${head}${sub}</div></div>`;
+  }
+  function indicatorTableHtml(views) {
+    const rowsHtml = list => list.map(v =>
+      `<tr title="${escapeHtml(v.tip)}"><td>${escapeHtml(v.label)}</td>` +
+      `<td class="ind-t-head ${indDirClass(v.headDir)}"><span class="ind-t-cell">${indTri(v.headDir)}${escapeHtml(v.headText)}</span></td>` +
+      `<td class="ind-t-sub ${v.subKind === 'delta' ? 'delta ' : ''}${indDirClass(v.subDir)}"><span class="ind-t-cell">${indTri(v.subDir)}${escapeHtml(v.subText)}</span></td></tr>`).join('');
+    const changeFirst = views.filter(v => !v.valueFirst);
+    const valueFirst = views.filter(v => v.valueFirst);
+    let html = '<div class="ind-table-wrap"><table class="ind-table"><thead><tr><th>Gösterge</th><th>Manşet</th><th>Alt değer</th></tr></thead><tbody>';
+    if (changeFirst.length) html += `<tr class="ind-group"><td colspan="3">Endeksler · gün içi % / değer</td></tr>${rowsHtml(changeFirst)}`;
+    if (valueFirst.length) html += `<tr class="ind-group"><td colspan="3">Piyasa · anlık değer / gün içi %</td></tr>${rowsHtml(valueFirst)}`;
+    return html + '</tbody></table></div>';
+  }
+
+  function renderIndicatorPanel() {
+    const body = document.getElementById('indPanelBody');
+    if (!body) return;
+    const view = getIndicatorView();
+    const toggle = document.getElementById('indViewToggleBtn');
+    if (toggle) {
+      const label = view === 'cards' ? 'Tablo görünümüne geç' : 'Kart görünümüne geç';
+      toggle.innerHTML = view === 'cards' ? IND_ICON_TABLE : IND_ICON_GRID;
+      toggle.setAttribute('aria-label', label);
+      toggle.title = label;
+    }
+    const timeEl = document.getElementById('indTime');
+    if (!db) { body.innerHTML = ''; return; }
+    let rows = [];
+    try { rows = orderIndicatorRows(loadIndicatorRows(true)); } catch (e) { rows = []; }
+    if (!rows.length) {
+      body.innerHTML = '<div class="ind-empty">Gösterge tanımlı değil — sağ üstteki düğmeyle ekleyebilirsiniz.</div>';
+      if (timeEl) { timeEl.textContent = '—'; timeEl.title = ''; }
+      return;
+    }
+    let latest = 0;
+    const views = rows.map(r => {
+      const entry = indicatorCacheRead(r.symbol, false); // süresi dolmuş son değer yine de gösterilir
+      if (entry && entry.timestamp > latest) latest = entry.timestamp;
+      return buildIndicatorView(r, entry, indicatorErrors[r.symbol]);
+    });
+    body.innerHTML = view === 'cards' ? `<div class="ind-grid">${views.map(indicatorCardHtml).join('')}</div>` : indicatorTableHtml(views);
+    if (timeEl) {
+      timeEl.textContent = latest ? new Date(latest).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—';
+      timeEl.title = latest ? 'Son güncelleme: ' + new Date(latest).toLocaleString('tr-TR') : 'Henüz veri alınmadı';
+    }
+  }
+
+  // ---------- yenileme ----------
+  async function refreshIndicators(force) {
+    if (!db || indicatorFetchInFlight) return;
+    let symbols;
+    try { symbols = [...new Set(loadIndicatorRows(true).map(r => r.symbol))]; } catch (e) { return; }
+    const need = symbols.filter(s => force || !indicatorCacheRead(s, true));
+    if (!need.length) { renderIndicatorPanel(); return; }
+    indicatorFetchInFlight = true;
+    try {
+      for (let i = 0; i < need.length; i += PRICE_GATEWAY_CHUNK) {
+        const chunk = need.slice(i, i + PRICE_GATEWAY_CHUNK);
+        let payload;
+        try {
+          payload = await fetchPriceChunk(chunk.map(s => ({ ticker: s, assetType: 'Gösterge', currency: '' })));
+        } catch (e) {
+          chunk.forEach(s => { indicatorErrors[s] = e.message; });
+          if (!indicatorErrorWarned) {
+            indicatorErrorWarned = true;
+            log('err', `Gösterge değerleri alınamadı (${e.message}).`);
+          }
+          continue;
+        }
+        const results = (payload && payload.results) || {};
+        chunk.forEach(s => {
+          const r = results[s]; // sembol (id) ile eşleme — sıra bağımsız
+          if (r && r.ok) { indicatorCacheWrite(s, r); delete indicatorErrors[s]; }
+          else indicatorErrors[s] = (r && r.error) || 'Yanıt alınamadı';
+        });
+      }
+    } finally {
+      indicatorFetchInFlight = false;
+      renderIndicatorPanel();
+    }
+  }
+
+  // ---------- düzenleme penceresi ----------
+  function indicatorEditorBlankRow() {
+    return { label: '', symbol: '', headline_mode: 'change', decimals: 2, prefix: '', suffix: '', enabled: true };
+  }
+  function indicatorDefaultsAsRows() {
+    return INDICATOR_DEFAULTS.map(d => ({ label: d.label, symbol: d.symbol, headline_mode: d.mode, decimals: d.decimals, prefix: d.prefix || '', suffix: d.suffix || '', enabled: true }));
+  }
+  // Saf fonksiyon: çalışma kopyasını doğrular/temizler. Sıra = dizi sırası.
+  function normalizeIndicatorRows(rows) {
+    const out = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const label = String(r.label || '').trim();
+      const symbol = String(r.symbol || '').trim().toUpperCase();
+      if (!label || !symbol) return { ok: false, error: `Satır ${i + 1}: Etiket ve Yahoo sembolü zorunlu.` };
+      let d = parseInt(r.decimals, 10);
+      if (isNaN(d)) d = 2;
+      d = Math.min(6, Math.max(0, d));
+      out.push({
+        label, symbol, headline_mode: r.headline_mode === 'value' ? 'value' : 'change', decimals: d,
+        prefix: String(r.prefix || '').trim(), suffix: String(r.suffix || '').trim(), enabled: r.enabled ? 1 : 0
+      });
+    }
+    return { ok: true, rows: out };
+  }
+  function saveIndicatorRows(rows) {
+    dbRun('BEGIN');
+    try {
+      dbRun('DELETE FROM market_indicators');
+      rows.forEach((r, i) => dbRun(
+        `INSERT INTO market_indicators (label, symbol, headline_mode, decimals, prefix, suffix, sort_order, enabled) VALUES (?,?,?,?,?,?,?,?)`,
+        [r.label, r.symbol, r.headline_mode, r.decimals, r.prefix, r.suffix, i + 1, r.enabled]));
+      dbRun('COMMIT');
+    } catch (e) {
+      try { dbRun('ROLLBACK'); } catch (e2) {}
+      throw e;
+    }
+  }
+  function setIndicatorEditorError(msg) {
+    const el = document.getElementById('indEditError');
+    if (el) el.textContent = msg || '';
+  }
+  function renderIndicatorEditor() {
+    const tb = document.getElementById('indEditBody');
+    if (!tb) return;
+    tb.innerHTML = indEditRows.map((r, i) => `
+      <tr data-i="${i}">
+        <td class="ind-edit-move"><button type="button" class="ind-mini-btn" data-act="up" aria-label="Yukarı taşı"${i === 0 ? ' disabled' : ''}>▲</button><button type="button" class="ind-mini-btn" data-act="down" aria-label="Aşağı taşı"${i === indEditRows.length - 1 ? ' disabled' : ''}>▼</button></td>
+        <td><input class="field" data-f="label" value="${escapeHtml(r.label)}" aria-label="Etiket" placeholder="S&amp;P 500"></td>
+        <td><input class="field" data-f="symbol" value="${escapeHtml(r.symbol)}" aria-label="Yahoo sembolü" placeholder="^GSPC" style="font-family:var(--font-mono);"></td>
+        <td><select class="field" data-f="headline_mode" aria-label="Manşet"><option value="change"${r.headline_mode === 'change' ? ' selected' : ''}>Gün içi %</option><option value="value"${r.headline_mode === 'value' ? ' selected' : ''}>Anlık değer</option></select></td>
+        <td><input class="field" type="number" min="0" max="6" step="1" data-f="decimals" value="${escapeHtml(r.decimals)}" aria-label="Ondalık basamak"></td>
+        <td><input class="field" data-f="prefix" value="${escapeHtml(r.prefix)}" maxlength="4" aria-label="Ön ek" placeholder="$"></td>
+        <td><input class="field" data-f="suffix" value="${escapeHtml(r.suffix)}" maxlength="4" aria-label="Son ek"></td>
+        <td class="ind-edit-chk"><input type="checkbox" data-f="enabled"${r.enabled ? ' checked' : ''} aria-label="Aktif"></td>
+        <td><button type="button" class="ind-mini-btn danger" data-act="del" aria-label="Sil">✕</button></td>
+      </tr>`).join('') || '<tr><td colspan="9" class="empty-state">Gösterge yok — "Gösterge Ekle" ile ekleyin.</td></tr>';
+  }
+  function onIndicatorEditorInput(e) {
+    const tr = e.target.closest ? e.target.closest('tr[data-i]') : null;
+    const f = e.target.dataset ? e.target.dataset.f : null;
+    if (!tr || !f) return;
+    const row = indEditRows[Number(tr.dataset.i)];
+    if (!row) return;
+    row[f] = (f === 'enabled') ? e.target.checked : e.target.value;
+  }
+  function onIndicatorEditorClick(e) {
+    const btn = e.target.closest ? e.target.closest('button[data-act]') : null;
+    if (!btn) return;
+    const tr = btn.closest('tr[data-i]');
+    if (!tr) return;
+    const i = Number(tr.dataset.i);
+    const act = btn.dataset.act;
+    if (act === 'up' && i > 0) { [indEditRows[i - 1], indEditRows[i]] = [indEditRows[i], indEditRows[i - 1]]; }
+    else if (act === 'down' && i < indEditRows.length - 1) { [indEditRows[i + 1], indEditRows[i]] = [indEditRows[i], indEditRows[i + 1]]; }
+    else if (act === 'del') { indEditRows.splice(i, 1); }
+    else return;
+    setIndicatorEditorError('');
+    renderIndicatorEditor();
+  }
+  function openIndicatorEditor() {
+    if (!db) return;
+    indEditRows = loadIndicatorRows(false).map(r => ({
+      label: r.label, symbol: r.symbol, headline_mode: r.headline_mode, decimals: r.decimals,
+      prefix: r.prefix || '', suffix: r.suffix || '', enabled: !!r.enabled
+    }));
+    setIndicatorEditorError('');
+    renderIndicatorEditor();
+    openModal('indicatorEditModal');
+  }
+  function saveIndicatorEditor() {
+    const norm = normalizeIndicatorRows(indEditRows);
+    if (!norm.ok) { setIndicatorEditorError(norm.error); return; }
+    try { saveIndicatorRows(norm.rows); }
+    catch (e) { setIndicatorEditorError('Kaydedilemedi: ' + e.message); return; }
+    closeModal('indicatorEditModal');
+    persistDb();
+    log('ok', `Gösterge listesi kaydedildi (${norm.rows.length} gösterge).`);
+    renderIndicatorPanel();
+    refreshIndicators(false); // yeni/değişen semboller için değer çek
+  }
+
+  (function wireIndicatorPanel() {
+    const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+    on('indViewToggleBtn', 'click', () => { setIndicatorView(getIndicatorView() === 'cards' ? 'table' : 'cards'); renderIndicatorPanel(); });
+    on('indEditBtn', 'click', openIndicatorEditor);
+    on('indEditAddBtn', 'click', () => {
+      indEditRows.push(indicatorEditorBlankRow());
+      setIndicatorEditorError('');
+      renderIndicatorEditor();
+      const inputs = document.querySelectorAll('#indEditBody input[data-f="label"]');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+    on('indEditResetBtn', 'click', () => { indEditRows = indicatorDefaultsAsRows(); setIndicatorEditorError(''); renderIndicatorEditor(); });
+    on('indEditSaveBtn', 'click', saveIndicatorEditor);
+    const tb = document.getElementById('indEditBody');
+    if (tb) {
+      tb.addEventListener('input', onIndicatorEditorInput);
+      tb.addEventListener('change', onIndicatorEditorInput);
+      tb.addEventListener('click', onIndicatorEditorClick);
+    }
+    // Sekme açıkken değerler TTL dolunca kendiliğinden tazelenir (sekme gizliyken istek atılmaz)
+    setInterval(() => { if (db && document.visibilityState === 'visible') refreshIndicators(false); }, INDICATOR_AUTO_REFRESH_MS);
+  })();
+  // <<< INDICATORS_CLIENT
 
   const DIST_CATEGORY_ORDER = {
     USD: ['Amerikan Hisse Senetleri', 'Amerikan Hisse Opsiyonları'],
@@ -4040,6 +4488,7 @@ else if (typeof exports === 'object'){
     if (!db) return;
     renderPortfolioDetailTable();
     renderPortfolioDistributionTable();
+    renderIndicatorPanel();
   }
 
   const portfolioSearchInput = document.getElementById('portfolioSearchInput');
@@ -4076,10 +4525,28 @@ else if (typeof exports === 'object'){
     });
   }
 
+  // v0.15: varsayılan gösterge listesini yükler (yalnızca tablo yeni oluşturulduğunda çağrılır)
+  function seedMarketIndicators(database) {
+    INDICATOR_DEFAULTS.forEach((d, i) => {
+      database.run(
+        `INSERT INTO market_indicators (label, symbol, headline_mode, decimals, prefix, suffix, sort_order, enabled) VALUES (?,?,?,?,?,?,?,1)`,
+        [d.label, d.symbol, d.mode, d.decimals, d.prefix || '', d.suffix || '', i + 1]);
+    });
+  }
+  function marketIndicatorsTableExists(database) {
+    const res = database.exec(`SELECT name FROM sqlite_master WHERE type='table' AND name='market_indicators'`);
+    return !!(res.length && res[0].values.length);
+  }
   function createSchema(database) {
     SCHEMA.forEach(t => { try { database.run(t.sql); } catch (e) {} });
+    try {
+      const n = database.exec(`SELECT COUNT(*) FROM market_indicators`);
+      if (n.length && n[0].values[0][0] === 0) seedMarketIndicators(database);
+    } catch (e) {}
   }
   function ensureSchema(database) {
+    let hadIndicators = true;
+    try { hadIndicators = marketIndicatorsTableExists(database); } catch (e) {}
     SCHEMA.forEach(t => {
       try { database.run(t.sql.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')); }
       catch (e) { log('err', `Şema doğrulama hatası (${t.name}): ` + e.message); }
@@ -4105,6 +4572,15 @@ else if (typeof exports === 'object'){
       }
     } catch (e) {
       log('err', 'Migrasyon hatası (asset_master.manual_price): ' + e.message);
+    }
+    // v0.15 migrasyonu: eski dosyalarda market_indicators tablosu yoktur — yukarıda oluşturuldu, varsayılanlarla doldurulur
+    if (!hadIndicators) {
+      try {
+        seedMarketIndicators(database);
+        log('info', 'Şema güncellendi: market_indicators tablosu eklendi ve varsayılan göstergeler yüklendi (eski dosya).');
+      } catch (e) {
+        log('err', 'Migrasyon hatası (market_indicators): ' + e.message);
+      }
     }
   }
 
@@ -4284,7 +4760,7 @@ else if (typeof exports === 'object'){
     log('ok', 'sql.js WASM modülü (gömülü) başarıyla yüklendi.');
     db = new SQL.Database();
     createSchema(db);
-    log('sql', '7 tablo oluşturuldu (yeni bellek-içi veritabanı).');
+    log('sql', `${SCHEMA.length} tablo oluşturuldu (yeni bellek-içi veritabanı).`);
     return tryReconnectDbFile();
   }).then(() => {
     if (!dbFileHandle) setDbStatus('Bir dosyaya bağlı değil — menüden "Veritabanı Seç/Aç" veya "Dışa Aktar" kullanın.');
@@ -4340,7 +4816,7 @@ else if (typeof exports === 'object'){
   document.getElementById('btnRefresh').addEventListener('click', () => { if (db) { renderTableGrid(db); log('info', 'Tablo satır sayıları yenilendi.'); } });
   document.getElementById('btnReset').addEventListener('click', () => {
     if (!db) return;
-    if (!confirm('Şema sıfırlanacak: tüm test verileri silinip 7 tablo yeniden oluşturulacak. Devam edilsin mi?')) return;
+    if (!confirm(`Şema sıfırlanacak: tüm test verileri silinip ${SCHEMA.length} tablo yeniden oluşturulacak (gösterge listesi varsayılana döner). Devam edilsin mi?`)) return;
     try {
       [...SCHEMA].reverse().forEach(t => db.run(`DROP TABLE IF EXISTS ${t.name}`));
       log('info', 'Mevcut tablolar silindi.');
